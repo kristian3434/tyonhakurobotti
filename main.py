@@ -8,9 +8,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 import random
 
-# HUOM: google.generativeai on poistettu "NO API MODE" -vaatimuksen mukaisesti.
-# import google.generativeai as genai  <-- ESTETTY
-
 # Varmistetaan polut
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 
@@ -21,11 +18,6 @@ USER_NAME = "Creative Pro"
 
 # ===============================================
 # AI-KÄYTTÖPERIAATE & PAKOTUS (LOGIC LAYER)
-# ===============================================
-# Määrittelee sallitut tekoälymallit.
-# Käyttöperiaate: Vain yksi malli on aktiivinen kerrallaan.
-# Versiointi: Aina palveluntarjoajan 'latest-stable'.
-# NO API MODE: Mallit toimivat loogisina agentteina ilman verkkoyhteyttä.
 # ===============================================
 AI_LOGIC_CORE = {
     "Gemini":  {"provider": "Google", "status": "Simuloitu", "role": "Primary"},
@@ -50,9 +42,7 @@ AGENCIES = {
     "Siili Solutions": "https://www.siili.com/urat",
 }
 
-# ===============================================
-# TARGET_ROLES – sovellutuksesi tukemat roolit
-# ===============================================
+# TARGET_ROLES
 TARGET_ROLES = [
     "Graafinen suunnittelija",        # Graphic Designer
     "Sisällöntuottaja",               # Content Creator
@@ -66,7 +56,7 @@ TARGET_ROLES = [
     "Art Director Assistant"
 ]
 
-# Hakusanat työnhakuun (suomi + englanti)
+# Hakusanat
 SEARCH_KEYWORDS = [
     "graafinen suunnittelija",
     "sisällöntuottaja",
@@ -81,10 +71,8 @@ SEARCH_KEYWORDS = [
     "art director assistant"
 ]
 
-# Future Maker -linkki
+# Linkit
 FUTURE_MAKER_LINK = "https://janmyllymaki.wixsite.com/future-maker/fi"
-
-# LINKIT (Muut)
 SITES_INTL = {
     "Krop": "https://www.krop.com/", "Design Jobs Board": "https://www.designjobsboard.com/",
     "If You Could Jobs": "https://ifyoucouldjobs.com/", "Authentic Jobs": "https://authenticjobs.com/",
@@ -145,13 +133,102 @@ def calculate_score(title, location, description=""):
 # ---------------------------------------------------------
 st.set_page_config(layout="wide", page_title="Future Maker Hub")
 
+# CSS INJEKTIO RESPONSIIVISUUDELLE
+st.markdown("""
+<style>
+    /* Responsiivinen kontainerin padding */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            padding-top: 2rem !important;
+        }
+        h1 {
+            font-size: 1.8rem !important;
+        }
+        .stButton button {
+            width: 100%;
+        }
+    }
+
+    /* Linkkipainikkeiden tyyli */
+    .responsive-link-btn {
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        padding: 12px; 
+        background: #262730; 
+        border: 1px solid #464b5f;
+        border-radius: 8px; 
+        margin-bottom: 8px; 
+        text-decoration: none; 
+        color: white !important; 
+        width: 100%;
+        box-sizing: border-box;
+        transition: background 0.2s, transform 0.1s;
+        font-weight: 500;
+    }
+    .responsive-link-btn:hover {
+        background: #363740;
+        border-color: #6c7080;
+    }
+    .responsive-link-btn:active {
+        transform: scale(0.98);
+    }
+    .responsive-link-btn img {
+        width: 20px; 
+        height: 20px;
+        margin-right: 10px;
+        object-fit: contain;
+    }
+
+    /* CTA-painikkeet (Tehohaku, Portfolio) */
+    .cta-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+    .cta-button {
+        display: inline-block;
+        background-color: #0a66c2; 
+        color: white !important; 
+        padding: 16px 32px; 
+        text-decoration: none; 
+        border-radius: 8px; 
+        font-weight: bold;
+        font-size: 1.1em;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.1s;
+        max-width: 100%;
+    }
+    .cta-button.dark {
+        background-color: #333;
+    }
+    .cta-button:active {
+        transform: scale(0.98);
+    }
+    
+    /* Mobiilisovitus CTA-napille */
+    @media (max-width: 576px) {
+        .cta-button {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 1rem;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
+
 def main():
     # --- SIVUPALKKI ---
     with st.sidebar:
         st.title("⚙️ Asetukset")
         
-        # --- AI-YDIN: PAKOTETTU VALINTA ---
-        st.header("🤖 AI-Ydin (Active Model)")
+        # --- AI-YDIN ---
+        st.header("🤖 AI-Ydin")
         selected_ai_core = st.radio(
             "Valitse suoritusmalli:",
             list(AI_LOGIC_CORE.keys()),
@@ -160,32 +237,30 @@ def main():
         )
         st.caption(f"Versio: {AI_LOGIC_CORE[selected_ai_core]['provider']} (Simuloitu)")
         st.markdown("---")
-        # ----------------------------------
 
-        # UI säilytetään, mutta logiikka on poistettu
         if 'api_key' not in st.session_state: st.session_state.api_key = ''
         api_input = st.text_input("API-avain (Ei aktiivinen)", type="password", value=st.session_state.api_key, disabled=True, help="NO API MODE aktivoitu.")
         st.markdown("---")
         st.caption(f"Roolihaku: {len(SEARCH_KEYWORDS)} avainsanaa")
 
     # --- OTSIKKO ---
-    st.title("FUTURE MAKER // HUB V32.0")
+    st.title("FUTURE MAKER // HUB V33.0")
     st.markdown(f"**User:** {USER_NAME} | **Active Core:** {selected_ai_core} (No API Mode)")
     
     # --- VÄLILEHDET ---
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "✨ AI HAKEMUS", 
-        "📊 ANALYSOI LÖYDÖS", 
-        "🏢 LINKKIKIRJASTO", 
+        "📊 ANALYSOI", 
+        "🏢 LINKIT", 
         "⚡️ TEHOHAKU", 
         "📌 SEURANTA", 
         "🕵️ AGENTTI",
-        "🇫🇮 TYÖMARKKINATORI",
+        "🇫🇮 TYÖ",
         "🎨 PORTFOLIO"
     ])
     
     # ---------------------------------------------------------
-    # TAB 1: AI HAKEMUS (LOGIIKKA: VALMISTELU VAIN)
+    # TAB 1: AI HAKEMUS
     # ---------------------------------------------------------
     with tab1:
         st.header(f"Kirjoita Hakemus ({selected_ai_core})")
@@ -195,11 +270,8 @@ def main():
         
         if st.button("🚀 SUORITA (Aktiivinen malli)", type="primary"):
             if job_desc and user_cv:
-                
-                # --- LOGIIKKA: NO API MODE ---
                 st.success(f"Agentti {selected_ai_core} on analysoinut tehtävän.")
                 
-                # Valmistellaan prompt (mutta ei lähetetä minnekään)
                 constructed_prompt = f"""
                 TOIMI SEURAAVASTI ({selected_ai_core}):
                 Kirjoita erottuva työhakemus tehtävään: {job_desc[:50]}...
@@ -211,12 +283,11 @@ def main():
                 st.markdown("**Agentti on valmistellut optimoidun kehotteen (Prompt), jota voit käyttää:**")
                 st.code(constructed_prompt, language="text")
                 st.markdown("*Kopioi yllä oleva teksti ja syötä se haluamaasi AI-palveluun.*")
-                
             else: 
                 st.warning("Täytä kentät analyysia varten.")
 
     # ---------------------------------------------------------
-    # TAB 2: ANALYSOI LÖYDÖS (LOGIIKKA: PAIKALLINEN)
+    # TAB 2: ANALYSOI LÖYDÖS
     # ---------------------------------------------------------
     with tab2:
         st.header(f"Analysoi Löydös ({selected_ai_core})")
@@ -226,30 +297,25 @@ def main():
         input_desc = st.text_area("Liitä ilmoitusteksti tähän (Analyysia varten):", height=150)
         
         if st.button("🔍 ANALYSOI (Aktiivinen malli)"):
-            # Lasketaan pisteet paikallisesti (ei vaadi APIa)
             score = calculate_score(input_title, input_loc, input_desc)
             st.markdown("---")
             st.subheader(f"Match Score: {score}/5.0")
             st.progress(score/5)
             
             if input_desc:
-                # --- LOGIIKKA: NO API MODE ---
                 st.info(f"💡 **Agentin ({selected_ai_core}) looginen päätelmä:**")
-                
                 if score >= 4.0:
                     st.write("✅ **Vahva osuma!** Tämä rooli vastaa erinomaisesti määriteltyjä tavoitteita ja avainsanoja.")
                 elif score >= 2.5:
                     st.write("⚠️ **Kohtalainen osuma.** Rooli sisältää oikeita elementtejä, mutta vaatii tarkempaa tarkastelua.")
                 else:
                     st.write("🛑 **Heikko osuma.** Rooli ei näytä vastaavan ydinosaamisalueita.")
-                    
                 st.caption("Huom: Tämä analyysi perustuu paikalliseen avainsanavertailuun ilman ulkoista API-kutsua.")
-                    
             else:
                 st.warning("Syötä ilmoitusteksti.")
 
     # ---------------------------------------------------------
-    # TAB 3: LINKKIKIRJASTO
+    # TAB 3: LINKKIKIRJASTO (RESPONSIIVINEN)
     # ---------------------------------------------------------
     with tab3:
         st.header("🏢 Linkkikirjasto")
@@ -259,26 +325,37 @@ def main():
                 try: domain = url.split("/")[2]; logo = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
                 except: logo = ""
                 with cols[i % 4]:
-                    st.markdown(f"""<a href="{url}" target="_blank" style="text-decoration: none; color: white; display: flex; align-items: center; padding: 8px; background: #333; border-radius: 5px; margin-bottom: 8px;"><img src="{logo}" style="width:20px; margin-right:8px;">{name}</a>""", unsafe_allow_html=True)
+                    # Käytetään CSS-luokkaa 'responsive-link-btn'
+                    st.markdown(f"""<a href="{url}" target="_blank" class="responsive-link-btn"><img src="{logo}">{name}</a>""", unsafe_allow_html=True)
         
         c1, c2, c3 = st.columns(3)
         with c1: 
             st.subheader("🌍 Kansainväliset")
-            for n, u in SITES_INTL.items(): st.markdown(f"[{n}]({u})")
+            for n, u in SITES_INTL.items(): 
+                st.markdown(f"[{n}]({u})")
         with c2: 
             st.subheader("🇫🇮 Suomi")
-            for n, u in SITES_FI_NORDIC.items(): st.markdown(f"[{n}]({u})")
+            for n, u in SITES_FI_NORDIC.items(): 
+                st.markdown(f"[{n}]({u})")
         with c3: 
             st.subheader("🎬 Media")
-            for n, u in SITES_MEDIA.items(): st.markdown(f"[{n}]({u})")
+            for n, u in SITES_MEDIA.items(): 
+                st.markdown(f"[{n}]({u})")
 
     # ---------------------------------------------------------
-    # TAB 4: TEHOHAKU
+    # TAB 4: TEHOHAKU (RESPONSIIVINEN)
     # ---------------------------------------------------------
     with tab4:
         st.header("⚡️ Tehohaku")
         url = generate_linkedin_url()
-        st.markdown(f"""<div style="text-align:center; margin-top:40px;"><a href="{url}" target="_blank" style="background:#0a66c2; color:white; padding:20px 40px; border-radius:10px; font-weight:bold; text-decoration:none; font-size:22px;">👉 AVAA LINKEDIN (HELSINKI + CREATIVE ROLES)</a></div>""", unsafe_allow_html=True)
+        # Käytetään CSS-luokkia 'cta-container' ja 'cta-button'
+        st.markdown(f"""
+        <div class="cta-container">
+            <a href="{url}" target="_blank" class="cta-button">
+                👉 AVAA LINKEDIN (HELSINKI + CREATIVE ROLES)
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
         
         with st.expander("ℹ️ Mitä hakusanoja käytetään?"):
             st.write(", ".join(SEARCH_KEYWORDS))
@@ -321,6 +398,8 @@ def main():
                 elif "Tarjous" in item['status']: status_color = "gold"
                 
                 with st.container(border=True):
+                    # Tässä st.columns skaalautuu automaattisesti, mutta sisältö voi mennä päällekkäin mobiilissa.
+                    # CSS-korjaukset block-containerissa auttavat.
                     col_main, col_status, col_action = st.columns([3, 2, 1])
                     with col_main:
                         st.subheader(f"{item['company']}")
@@ -386,7 +465,7 @@ def main():
             else: st.markdown(s)
 
     # ---------------------------------------------------------
-    # TAB 7: TYÖMARKKINATORI
+    # TAB 7: TYÖMARKKINATORI (RESPONSIIVINEN)
     # ---------------------------------------------------------
     with tab7:
         st.header("🇫🇮 Työmarkkinatori - Luovat Alat")
@@ -396,44 +475,30 @@ def main():
         """)
         
         tm_base = "https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/"
-        # Käytetään laajennettua hakua
         tm_keywords = "%20".join(SEARCH_KEYWORDS) 
         tm_query = f"q={tm_keywords}&region=Uusimaa"
         tm_url = f"{tm_base}?{tm_query}"
 
+        # Käytetään CSS-luokkia 'cta-container' ja 'cta-button'
         st.markdown(f"""
-        <div style="margin-bottom: 20px;">
-            <a href="{tm_url}" target="_blank" style="
-                background-color: #0052a3; 
-                color: white; 
-                padding: 12px 25px; 
-                text-decoration: none; 
-                border-radius: 6px; 
-                font-weight: bold;
-                display: inline-block;">
+        <div class="cta-container">
+            <a href="{tm_url}" target="_blank" class="cta-button">
                 👉 Avaa Työmarkkinatori (Live-haku)
             </a>
         </div>
         """, unsafe_allow_html=True)
     
     # ---------------------------------------------------------
-    # TAB 8: PORTFOLIO
+    # TAB 8: PORTFOLIO (RESPONSIIVINEN)
     # ---------------------------------------------------------
     with tab8:
         st.header("🎨 Future Maker // Portfolio")
         st.markdown("Klikkaa alla olevaa linkkiä avataksesi portfolion ja CV:n.")
         
-        # 1. URL ja Avaa-nappi (Käytetään FUTURE_MAKER_LINK -muuttujaa)
+        # Käytetään CSS-luokkia 'cta-container' ja 'cta-button dark'
         st.markdown(f"""
-        <div style="margin-bottom: 20px;">
-            <a href="{FUTURE_MAKER_LINK}" target="_blank" style="
-                background-color: #333; 
-                color: white; 
-                padding: 15px 30px; 
-                text-decoration: none; 
-                border-radius: 8px; 
-                font-weight: bold;
-                display: inline-block; font-size:1.2em;">
+        <div class="cta-container">
+            <a href="{FUTURE_MAKER_LINK}" target="_blank" class="cta-button dark">
                 ↗️ AVAA PORTFOLIO & CV
             </a>
         </div>
@@ -456,3 +521,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
