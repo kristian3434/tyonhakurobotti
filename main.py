@@ -36,7 +36,7 @@ def validate_link(url):
 
 # AI-LOGIIKKA
 AI_LOGIC_CORE = {
-    "Gemini":  {"provider": "Google", "status": "Hybrid (API / Simuloitu)", "role": "Primary"},
+    "Gemini":  {"provider": "Google", "status": "Simuloitu", "role": "Primary"},
     "ChatGPT": {"provider": "OpenAI", "status": "Simuloitu", "role": "Secondary"},
     "Claude":  {"provider": "Anthropic", "status": "Simuloitu", "role": "Secondary"},
     "Copilot": {"provider": "Microsoft", "status": "Simuloitu", "role": "Secondary"}
@@ -59,8 +59,7 @@ AGENCIES = {
 }
 
 # PÄIVITETTY KOULUTUSDATA (PK-SEUTU: MEDIA, DIGI, VIESTINTÄ)
-# Sisustusala ja Helsinki Design School poistettu.
-# Sisältää: Ammatillinen (Stadin AO, Varia, Omnia), Aikuiskoulutus (Rastor, Taitotalo), AMK.
+# Vain validoidut linkit.
 SCHOOLS_DATA = [
     # AMMATILLINEN & AIKUISKOULUTUS
     {"name": "Stadin AO (Media-alan pt)", "url": "https://stadinao.fi/koulutustarjonta/media-alan-ja-kuvallisen-ilmaisun-perustutkinto/", "status": "Jatkuva haku"},
@@ -88,7 +87,7 @@ STARTUPS_PK = {
     "Supercell Careers": "https://supercell.com/en/careers/"
 }
 
-# TARGET_ROLES (Sisustus poistettu)
+# TARGET_ROLES
 TARGET_ROLES = [
     "Graafinen suunnittelija", "Sisällöntuottaja", "Visuaalinen suunnittelija",
     "Projektipäällikkö (luovat sisällöt)", "Viestintäsuunnittelija", "Markkinointisuunnittelija",
@@ -96,7 +95,7 @@ TARGET_ROLES = [
     "Junior Designer", "Video Editor"
 ]
 
-# HAKUSANAT (Sisustus poistettu)
+# HAKUSANAT
 SEARCH_KEYWORDS = [
     "graafinen suunnittelija", "sisällöntuottaja", "visuaalinen suunnittelija",
     "projektipäällikkö", "viestintäsuunnittelija", "markkinointisuunnittelija",
@@ -191,6 +190,9 @@ def main():
     if 'watched_schools' not in st.session_state:
         st.session_state.watched_schools = []
 
+    # API-AVAIN PAKOTETTU TYHJÄKSI (NO API MODE)
+    st.session_state.api_key = ''
+
     with st.sidebar:
         st.title("⚙️ Asetukset")
         
@@ -199,12 +201,7 @@ def main():
         st.caption(f"Status: {AI_LOGIC_CORE[selected_ai_core]['status']}")
         st.markdown("---")
         
-        # API-KENTTÄ
-        if 'api_key' not in st.session_state: st.session_state.api_key = ''
-        api_input = st.text_input("Gemini API-avain (Valinnainen)", type="password", value=st.session_state.api_key, help="Jos jätät tyhjäksi, sovellus toimii simulaatiotilassa.")
-        if api_input: st.session_state.api_key = api_input; st.success("API-avain aktiivinen!")
-        else: st.caption("Ei avainta - Simulaatiotila")
-        st.markdown("---")
+        # API-KENTTÄ POISTETTU KOKONAAN UI:STA
         
         # --- ASETUKSET: KOHDENNETTU HAKU ---
         st.header("🎯 Kohdennettu Haku")
@@ -265,8 +262,9 @@ def main():
 
         st.caption(f"Roolihaku: {len(SEARCH_KEYWORDS)} avainsanaa")
 
-    st.title("FUTURE MAKER // HUB V41.0")
-    mode_status = "API Mode" if st.session_state.api_key and selected_ai_core == "Gemini" else "No API Mode"
+    st.title("FUTURE MAKER // HUB V43.0")
+    # TILA ON AINA NO API MODE
+    mode_status = "No API Mode"
     st.markdown(f"**User:** {USER_NAME} | **Core:** {selected_ai_core} ({mode_status})")
     
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["✨ AI HAKEMUS", "📊 ANALYSOI", "🏢 LINKIT", "⚡️ TEHOHAKU", "📌 SEURANTA", "🕵️ AGENTTI", "🇫🇮 TYÖ", "🎨 PORTFOLIO"])
@@ -280,15 +278,10 @@ def main():
         
         if st.button("🚀 SUORITA (Aktiivinen malli)", type="primary"):
             if job_desc and user_cv:
+                # API-avain on aina tyhjä -> Menee suoraan simulaatioon
                 if selected_ai_core == "Gemini" and st.session_state.api_key:
-                    with st.spinner("Gemini API kirjoittaa hakemusta..."):
-                        try:
-                            genai.configure(api_key=st.session_state.api_key)
-                            model = genai.GenerativeModel('gemini-1.5-flash')
-                            prompt = f"Kirjoita työhakemus. Rooli: {job_desc}. Tausta: {user_cv}. Tyyli: Moderni, vakuuttava."
-                            response = model.generate_content(prompt)
-                            st.text_area("Valmis hakemus:", value=response.text, height=600)
-                        except Exception as e: st.error(f"API-virhe: {e}")
+                    # TÄNNE EI PÄÄSTÄ KOSKA API_KEY ON PAKOTETTU TYHJÄKSI
+                    pass 
                 else:
                     st.success(f"Agentti {selected_ai_core} on analysoinut tehtävän (Simulaatio).")
                     constructed_prompt = f"TOIMI SEURAAVASTI ({selected_ai_core}):\nKirjoita erottuva työhakemus tehtävään: {job_desc[:50]}...\nHakijan tausta: {user_cv[:50]}...\nPainotus: Moderni, vakuuttava."
@@ -310,15 +303,9 @@ def main():
             st.progress(score/5)
             
             if input_desc:
+                # API-avain on aina tyhjä -> Menee suoraan simulaatioon
                 if selected_ai_core == "Gemini" and st.session_state.api_key:
-                    with st.spinner("Gemini API tulkitsee..."):
-                        try:
-                            genai.configure(api_key=st.session_state.api_key)
-                            model = genai.GenerativeModel('gemini-1.5-flash')
-                            response = model.generate_content(f"Analysoi lyhyesti miksi tämä työ sopii profiililleni (Luova/AI). Ilmoitus: {input_desc}")
-                            st.info("💡 **TEKOÄLYN TULKINTA (API):**")
-                            st.write(response.text)
-                        except: st.error("API-virhe.")
+                     pass
                 else:
                     st.info(f"💡 **Agentin ({selected_ai_core}) looginen päätelmä (Simulaatio):**")
                     if score >= 4.0: st.write("✅ **Vahva osuma!**")
