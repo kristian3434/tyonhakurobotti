@@ -5,7 +5,6 @@ import datetime
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-import google.generativeai as genai
 import requests
 import random
 import json
@@ -57,9 +56,9 @@ def validate_link(url):
     except:
         return False
 
-# AI-LOGIIKKA
+# AI-LOGIIKKA (Simuloitu)
 AI_LOGIC_CORE = {
-    "Gemini":  {"provider": "Google", "status": "Hybrid (API / Simuloitu)", "role": "Primary"},
+    "Gemini":  {"provider": "Google", "status": "Simuloitu", "role": "Primary"},
     "ChatGPT": {"provider": "OpenAI", "status": "Simuloitu", "role": "Secondary"},
     "Claude":  {"provider": "Anthropic", "status": "Simuloitu", "role": "Secondary"},
     "Copilot": {"provider": "Microsoft", "status": "Simuloitu", "role": "Secondary"}
@@ -205,41 +204,6 @@ def calculate_score(title, location, description=""):
     elif 'remote' in location: score += 0.8
     return min(score, 5.0)
 
-def gemini_safe_fetch(job_desc: str, user_cv: str, api_key: str = "") -> str:
-    """
-    Fetch job/training results in strict safe mode with Gemini.
-    - Hallusinaatiot estetty
-    - GDPR ja read-only turva
-    - Whitelist domain + HTTP200 check
-    """
-    if not api_key:
-        return "NO API KEY - Simulated mode only (read-only, safe)."
-
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-
-    prompt = f"""
-    You are operating in STRICT DATA MODE for job and training searches.
-    READ-ONLY RULE: You cannot modify, delete, overwrite, or create any files, databases, or app settings.
-    Never hallucinate, guess, or fabricate data. Personal info must be skipped.
-    Only return results from these domains:
-    LinkedIn, Työmarkkinatori, Taitotalo.fi, StadinAO.fi, Metropolia.fi, Haaga-Helia.fi, Arcada.fi, Aalto.fi, Omnia.fi, Varia.fi, BusinessCollege.fi, RastorInst.fi
-    Verify each URL returns HTTP 200.
-    Format each result as: title | organization | platform | full URL | status (VERIFIED / SKIPPED)
-    If nothing valid, return exactly: NO DATA – SKIPPED
-    Include SKIPPED reasons for invalid items.
-    Operate in read-only mode. DO NOT modify any files or settings.
-    Task: Fetch jobs or training opportunities matching:
-    Job description: {job_desc[:100]}...
-    User CV / Background: {user_cv[:100]}...
-    """
-
-    try:
-        response = model.generate_content(prompt, request_options={'timeout': 30})
-        return response.text
-    except Exception as e:
-        return f"API error: {e} – ensure API key and network connectivity"
-
 # ---------------------------------------------------------
 # 3. KÄYTTÖLIITTYMÄ (RESPONSIIVINEN)
 # ---------------------------------------------------------
@@ -277,7 +241,7 @@ def main():
         st.session_state.tracked_companies = load_local_data()
     if 'watched_schools' not in st.session_state:
         st.session_state.watched_schools = []
-    
+     
     # MUOKKAUSTILAN HALLINTA
     if 'edit_states' not in st.session_state:
         st.session_state.edit_states = {}
@@ -290,21 +254,7 @@ def main():
         st.caption(f"Status: {AI_LOGIC_CORE[selected_ai_core]['status']}")
         st.markdown("---")
         
-        # API-KENTTÄ
-        if 'api_key' not in st.session_state: st.session_state.api_key = ''
-        
-        api_input = st.text_input(
-            "Gemini API-avain (Valinnainen)", 
-            type="password", 
-            value=st.session_state.api_key, 
-            help="Jos jätät tyhjäksi, sovellus toimii simulaatiotilassa."
-        )
-        
-        if api_input: 
-            st.session_state.api_key = api_input
-            st.success("API-avain aktiivinen!")
-        else: 
-            st.caption("Ei avainta - Simulaatiotila")
+        st.info("💡 Toimintatila: Simulaatio (Ei API-yhteyttä)")
             
         st.markdown("---")
         
@@ -325,8 +275,7 @@ def main():
         st.caption(f"Roolihaku: {len(SEARCH_KEYWORDS)} avainsanaa")
 
     st.title("FUTURE MAKER // HUB V60.0")
-    mode_status = "API Mode" if st.session_state.api_key and selected_ai_core == "Gemini" else "No API Mode"
-    st.markdown(f"**User:** {USER_NAME} | **Core:** {selected_ai_core} ({mode_status})")
+    st.markdown(f"**User:** {USER_NAME} | **Core:** {selected_ai_core} (Simulation Mode)")
     
     # --- VÄLILEHDET ---
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
@@ -342,39 +291,14 @@ def main():
         with c1: job_desc = st.text_area("1. Työpaikkailmoitus / Haku:", height=300)
         with c2: user_cv = st.text_area("2. Oma CV / Tausta:", height=300)
         
-        btn_col1, btn_col2 = st.columns([1, 1])
-
-        with btn_col1:
-            if st.button("🚀 KIRJOITA HAKEMUS", type="primary"):
-                if job_desc and user_cv:
-                    if selected_ai_core == "Gemini" and st.session_state.api_key:
-                        with st.spinner("Gemini API kirjoittaa hakemusta..."):
-                            try:
-                                genai.configure(api_key=st.session_state.api_key)
-                                model = genai.GenerativeModel('gemini-1.5-flash')
-                                prompt = "Kirjoita selkeä ja asiallinen työhakemus avoimeen harjoittelupaikkaan."
-                                response = model.generate_content(prompt, request_options={'timeout': 30})
-                                st.text_area("Valmis hakemus:", value=response.text, height=600)
-                            except Exception as e: 
-                                st.error(f"API-virhe: {e}. Varmista API-avain ja yhteys.")
-                    else:
-                        st.success(f"Agentti {selected_ai_core} on analysoinut tehtävän (Simulaatio).")
-                        constructed_prompt = f"TOIMI SEURAAVASTI ({selected_ai_core}):\nKirjoita erottuva työhakemus tehtävään: {job_desc[:50]}...\nHakijan tausta: {user_cv[:50]}...\nPainotus: Moderni, vakuuttava."
-                        st.info("ℹ️ **NO API MODE:** Alla optimoitu kehote (Prompt), jonka voit kopioida.")
-                        st.code(constructed_prompt, language="text")
-                else: st.warning("Täytä kentät.")
+        if st.button("🚀 KIRJOITA HAKEMUS", type="primary"):
+            if job_desc and user_cv:
+                st.success(f"Agentti {selected_ai_core} on analysoinut tehtävän (Simulaatio).")
+                constructed_prompt = f"TOIMI SEURAAVASTI ({selected_ai_core}):\nKirjoita erottuva työhakemus tehtävään: {job_desc[:50]}...\nHakijan tausta: {user_cv[:50]}...\nPainotus: Moderni, vakuuttava."
+                st.info("ℹ️ **NO API MODE:** Alla optimoitu kehote (Prompt), jonka voit kopioida.")
+                st.code(constructed_prompt, language="text")
+            else: st.warning("Täytä kentät.")
         
-        with btn_col2:
-            if st.button("🛡️ SAFE FETCH (Strict Mode)"):
-                if job_desc and user_cv:
-                    with st.spinner("Suoritetaan tietoturvallista hakua (Read-Only)..."):
-                        result = gemini_safe_fetch(job_desc, user_cv, st.session_state.api_key)
-                        st.subheader("🔒 Safe Fetch Results")
-                        st.info("GDPR & Domain Whitelist Active")
-                        st.code(result, language="text")
-                else:
-                    st.warning("Syötä hakutekstit ensin.")
-
     # --- TAB 2: ANALYSOI ---
     with tab2:
         st.header(f"Analysoi Löydös ({selected_ai_core})")
@@ -389,23 +313,10 @@ def main():
             st.progress(score/5)
             
             if input_desc:
-                if selected_ai_core == "Gemini" and st.session_state.api_key:
-                    with st.spinner("Gemini API tulkitsee..."):
-                        try:
-                            genai.configure(api_key=st.session_state.api_key)
-                            model = genai.GenerativeModel('gemini-1.5-flash')
-                            response = model.generate_content(
-                                f"Analysoi lyhyesti miksi tämä työ sopii profiililleni (Luova/AI). Ilmoitus: {input_desc}",
-                                request_options={'timeout': 30}
-                            )
-                            st.info("💡 **TEKOÄLYN TULKINTA (API):**")
-                            st.write(response.text)
-                        except: st.error("API-virhe.")
-                else:
-                    st.info(f"💡 **Agentin ({selected_ai_core}) looginen päätelmä (Simulaatio):**")
-                    if score >= 4.0: st.write("✅ **Vahva osuma!**")
-                    elif score >= 2.5: st.write("⚠️ **Kohtalainen osuma.**")
-                    else: st.write("🛑 **Heikko osuma.**")
+                st.info(f"💡 **Agentin ({selected_ai_core}) looginen päätelmä (Simulaatio):**")
+                if score >= 4.0: st.write("✅ **Vahva osuma!**")
+                elif score >= 2.5: st.write("⚠️ **Kohtalainen osuma.**")
+                else: st.write("🛑 **Heikko osuma.**")
 
     # --- TAB 3: LINKIT (VALIDOITU) ---
     with tab3:
@@ -436,66 +347,102 @@ def main():
     # --- TAB 5: SEURANTA ---
     with tab5:
         st.header("📌 Hakemusten Seuranta")
-        with st.expander("➕ Lisää manuaalisesti", expanded=False):
-            with st.form("add"):
-                c1, c2 = st.columns(2)
-                with c1: cn = st.text_input("Yritys")
-                with c2: cr = st.text_input("Rooli")
-                cs = st.selectbox("Tila", ["Odottaa", "Keskustelu", "Haastattelu", "Ei vastausta", "Hylätty"])
-                if st.form_submit_button("Tallenna") and cn:
-                    new_item = {
-                        "company": cn, "role": cr, "status": cs, 
-                        "date": datetime.datetime.now().strftime("%d.%m."),
-                        "contact_name": "", "contact_phone": "", "contact_email": ""
-                    }
-                    st.session_state.tracked_companies.append(new_item)
-                    save_local_data(st.session_state.tracked_companies)
-                    st.rerun()
-        
-        for i, item in enumerate(st.session_state.tracked_companies):
-            with st.container(border=True):
-                # Varmistetaan kentät
-                if "contact_name" not in item: item["contact_name"] = ""
-                if "contact_phone" not in item: item["contact_phone"] = ""
-                if "contact_email" not in item: item["contact_email"] = ""
 
+        STATUS_COLORS = {
+            "Odottaa": {"bg": "#FFF3CD", "text": "#856404"},
+            "Keskustelu": {"bg": "#D1ECF1", "text": "#0C5460"},
+            "Haastattelu": {"bg": "#C3E6CB", "text": "#155724"},
+            "Ei vastausta": {"bg": "#E2E3E5", "text": "#6C757D"},
+            "Hylätty": {"bg": "#F8D7DA", "text": "#721C24"}
+        }
+
+        # Lisää uusi hakemus
+        with st.expander("➕ Lisää manuaalisesti", expanded=False):
+            # Huom: Poistettu st.form jotta conditional input (haastattelupäivä) päivittyy heti
+            c1, c2 = st.columns(2)
+            with c1: cn = st.text_input("Yritys")
+            with c2: cr = st.text_input("Rooli")
+            cs = st.selectbox("Tila", ["Odottaa", "Keskustelu", "Haastattelu", "Ei vastausta", "Hylätty"])
+
+            # Haastattelun lisäys vain jos status Haastattelu
+            interview_date = ""
+            interview_time = ""
+            if cs == "Haastattelu":
+                interview_date = st.date_input("Haastattelupäivä", key="int_date")
+                interview_time = st.time_input("Haastattelun kellonaika", key="int_time")
+
+            if st.button("Tallenna", type="primary") and cn:
+                new_item = {
+                    "company": cn,
+                    "role": cr,
+                    "status": cs,
+                    "date": datetime.datetime.now().strftime("%d.%m."),  # Hakemuspäivä tallentuu aina
+                    "contact_name": "",
+                    "contact_phone": "",
+                    "contact_email": "",
+                    "interview_date": str(interview_date) if cs == "Haastattelu" else "",
+                    "interview_time": str(interview_time) if cs == "Haastattelu" else ""
+                }
+                st.session_state.tracked_companies.append(new_item)
+                save_local_data(st.session_state.tracked_companies)
+                st.success("✅ Hakemus tallennettu!")
+                st.rerun()
+
+        # Näytä seuranta
+        for i, item in enumerate(st.session_state.tracked_companies):
+            with st.container():
+                for k in ["contact_name", "contact_phone", "contact_email", "interview_date", "interview_time"]:
+                    if k not in item: item[k] = ""
+
+                # Kortti: yritys + rooli + status + hakemuspäivä + poistopainike
+                status_color = STATUS_COLORS.get(item['status'], {"bg": "#FFFFFF", "text": "#000000"})
                 c1, c2, c3 = st.columns([3, 2, 1])
-                with c1: st.write(f"**{item['company']}** ({item['role']})")
-                with c2: st.caption(f"{item['status']} | {item['date']}")
-                with c3: 
+                with c1:
+                    st.markdown(f"**{item['company']}** ({item['role']})")
+                with c2:
+                    st.markdown(
+                        f"<span style='background-color:{status_color['bg']}; color:{status_color['text']}; "
+                        f"padding:4px 8px; border-radius:6px;'>{item['status']}</span> | {item['date']}",
+                        unsafe_allow_html=True
+                    )
+                with c3:
                     if st.button("🗑️", key=f"d{i}"): 
                         st.session_state.tracked_companies.pop(i)
                         save_local_data(st.session_state.tracked_companies)
+                        st.success("✅ Poistettu")
                         st.rerun()
-                
-                # UUSI YHTEYSTIETO-OSIO (LUKITUS)
+
+                # Haastattelun tiedot
+                if item['status'] == "Haastattelu" and item['interview_date']:
+                    st.markdown(f"🗓️ **Haastattelu:** {item['interview_date']} klo {item['interview_time']}")
+
+                # Yhteystiedot
                 is_editing = st.session_state.edit_states.get(i, False)
                 with st.expander("👤 Yhteystiedot"):
                     if st.button("✏️ Avaa muokkaus" if not is_editing else "🔒 Lukitse", key=f"edit_btn_{i}"):
                         st.session_state.edit_states[i] = not is_editing
                         st.rerun()
-                    
-                    c_contact1, c_contact2, c_contact3 = st.columns(3)
+
+                    c1, c2, c3 = st.columns(3)
                     disabled_status = not is_editing
-                    
-                    with c_contact1:
+                    with c1:
                         new_name = st.text_input("Nimi", value=item['contact_name'], key=f"cn_{i}", disabled=disabled_status)
                         if new_name != item['contact_name']:
                             item['contact_name'] = new_name
                             save_local_data(st.session_state.tracked_companies)
-                    with c_contact2:
+                    with c2:
                         new_phone = st.text_input("Puhelin", value=item['contact_phone'], key=f"cp_{i}", disabled=disabled_status)
                         if new_phone != item['contact_phone']:
                             item['contact_phone'] = new_phone
                             save_local_data(st.session_state.tracked_companies)
-                    with c_contact3:
+                    with c3:
                         new_email = st.text_input("Sähköposti", value=item['contact_email'], key=f"ce_{i}", disabled=disabled_status)
                         if new_email != item['contact_email']:
                             item['contact_email'] = new_email
                             save_local_data(st.session_state.tracked_companies)
 
-        if not st.session_state.tracked_companies:
-            st.info("Seurantalista on tyhjä.")
+    if not st.session_state.tracked_companies:
+        st.info("Seurantalista on tyhjä.")
 
     # --- TAB 6: AGENTTI ---
     with tab6:
@@ -578,7 +525,8 @@ def main():
                                 "role": sug['category'],
                                 "status": "Kiinnostunut",
                                 "date": datetime.datetime.now().strftime("%d.%m."),
-                                "contact_name": "", "contact_phone": "", "contact_email": ""
+                                "contact_name": "", "contact_phone": "", "contact_email": "",
+                                "interview_date": "", "interview_time": ""
                             }
                             st.session_state.tracked_companies.append(new_item)
                             save_local_data(st.session_state.tracked_companies)
