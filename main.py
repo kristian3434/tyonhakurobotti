@@ -106,7 +106,10 @@ def validate_link(url):
     Timeout optimoitu nopeammaksi (2s).
     """
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+        }
         response = requests.head(url, headers=headers, timeout=2, allow_redirects=True)
         if response.status_code == 200:
             return True
@@ -133,6 +136,13 @@ AI_STUDIES = [
         "url": "https://www.cloudskillsboost.google/paths/118",
         "desc": "Googlen virallinen ja ilmainen polku generatiivisen tekoälyn syvälliseen ymmärtämiseen.",
         "type": "SERTIFIKAATTI"
+    },
+    {
+        "name": "Opin.fi: Tekoäly & Luova osaaminen",
+        "provider": "Suomen Korkeakoulut (Digivisio)",
+        "url": "https://opin.fi/fi/search?q=teko%C3%A4ly",
+        "desc": "Kokoava haku. Kriteerit: Laskennallinen luovuus, XR, Visual Culture, Palvelumuotoilu & AI.",
+        "type": "HAKUPALVELU"
     },
     {
         "name": "Elements of AI",
@@ -192,9 +202,30 @@ AI_STUDIES = [
     }
 ]
 
+# --- UUDET HAKUSANAT: YLIOPISTO & AMK (AI & LUOVA ALA) ---
+UNI_KEYWORDS = [
+    "laskennallinen luovuus",
+    "computational creativity",
+    "human-computer interaction",
+    "digital humanities",
+    "visual culture",
+    "mikrotutkinto",
+    "tekoäly viestinnässä"
+]
+
+AMK_KEYWORDS = [
+    "palvelumuotoilu",      # Service Design + AI on kova yhdistelmä
+    "erikoistumiskoulutus", # Avainsana ammattilaisille
+    "osaajakoulutus",       # Täsmäosaaminen
+    "mediatuotanto",
+    "visuaalinen suunnittelu",
+    "XR",                   # Extended Reality
+    "virtuaalituotanto"
+]
+
 AGENCIES = {
     "Bob the Robot": "https://bobtherobot.fi/careers",
-    "TBWA\Helsinki": "https://tbwa.fi/careers",
+    "TBWA\Helsinki": "https://www.tbwa.fi/", # PÄIVITETTY PYYNNÖSTÄ
     "SEK": "https://www.sek.fi/tyopaikat",
     "Futurice": "https://futurice.com/careers",
     "N2 Creative": "https://n2.fi/rekry",
@@ -232,6 +263,7 @@ SCHOOLS_DATA = [
         "logo": "https://www.haaga-helia.fi/themes/custom/hh/logo.svg",
         "status": "AMK / Haku"
     },
+    # LAUREA POISTETTU PYYNNÖSTÄ
     {
         "name": "Humak (Kulttuurituottaja)", 
         "url": "https://www.humak.fi/koulutus/kulttuurituottaja/", 
@@ -338,14 +370,28 @@ def generate_linkedin_url():
 def calculate_score(title, location, description=""):
     score = 1.0
     title = title.lower(); location = location.lower(); desc = description.lower()
+    
+    # 1. Rooliosumat
     role_match = 0
     for role in TARGET_ROLES:
         if role.lower() in title: role_match += 1
     score += min(role_match * 0.5, 2.0)
+    
+    # 2. Senioriteetti
     if any(x in title for x in ['strateg', 'lead', 'head', 'päällikkö']): score += 1.0
-    if any(x in title for x in ['ai ', 'genai', 'technolog']) or any(x in desc for x in ['ai ', 'artificial intelligence', 'chatgpt', 'midjourney']): score += 1.0
+    
+    # 3. Kytketään aivot uuteen dataan (AI + UNI + AMK)
+    # Yhdistetään kaikki "hyvät" avainsanat yhteen listaan
+    all_keywords = ['ai ', 'genai', 'technolog', 'chatgpt', 'midjourney'] + UNI_KEYWORDS + AMK_KEYWORDS
+    
+    # Tarkistetaan otsikko TAI kuvaus näiden sanojen varalta
+    if any(kw.lower() in title for kw in all_keywords) or any(kw.lower() in desc for kw in all_keywords):
+        score += 1.0
+
+    # 4. Sijainti
     if 'helsinki' in location or 'espoo' in location: score += 1.0
     elif 'remote' in location: score += 0.8
+    
     return min(score, 5.0)
 
 def SAFE_DEADLINE_BLOCK(date_input, is_future_event=False):
@@ -460,11 +506,26 @@ def main():
         st.caption(f"Status: {AI_LOGIC_CORE[selected_ai_core]['status']}")
         st.markdown("---")
         
-        # API-KENTTÄ (POISTETTU KÄYTÖSTÄ)
+        # API-KENTTÄ (POISTETTU KÄYTÖSTÄ PYYNNÖSTÄ)
         if 'api_key' not in st.session_state: st.session_state.api_key = ''
         
-        st.caption("🔒 API-avain poistettu käytöstä")
-        st.caption("Sovellus toimii simulaatiotilassa")
+        # Varmistetaan että API-avain on tyhjä, eikä käyttäjä voi syöttää sitä
+        st.session_state.api_key = ""
+        st.caption("🔒 API-avain poistettu käytöstä - Vain Simulaatiotila")
+        
+        # Alkuperäinen koodi kommentoitu pois:
+        # api_input = st.text_input(
+        #     "Gemini API-avain (Valinnainen)", 
+        #     type="password", 
+        #     value=st.session_state.api_key, 
+        #     help="Jos jätät tyhjäksi, sovellus toimii simulaatiotilassa."
+        # )
+        
+        # if api_input: 
+        #     st.session_state.api_key = api_input
+        #     st.success("API-avain aktiivinen!")
+        # else: 
+        #     st.caption("Ei avainta - Simulaatiotila")
             
         st.markdown("---")
         
@@ -843,12 +904,12 @@ def main():
                                     # Estetään duplikaatti Seurannassa
                                     if sug['name'] not in tracked_names:
                                         new_item = {
-                                                "company": sug['name'],
-                                                "role": sug['category'],
-                                                "status": "Kiinnostunut",
-                                                "date": datetime.datetime.now().strftime("%d.%m."),
-                                                "contact_name": "", "contact_phone": "", "contact_email": "",
-                                                "interview_date": "", "interview_time": ""
+                                            "company": sug['name'],
+                                            "role": sug['category'],
+                                            "status": "Kiinnostunut",
+                                            "date": datetime.datetime.now().strftime("%d.%m."),
+                                            "contact_name": "", "contact_phone": "", "contact_email": "",
+                                            "interview_date": "", "interview_time": ""
                                         }
                                         st.session_state.tracked_companies.append(new_item)
                                         save_local_data(st.session_state.tracked_companies)
@@ -948,23 +1009,25 @@ def main():
         valid_courses_count = 0
         
         for i, course in enumerate(AI_STUDIES):
-            if validate_link(course['url']):
-                valid_courses_count += 1
-                with cols[i % 3]:
-                    st.markdown(f"""
-                    <div class="ai-card">
-                        <div class="ai-header">
-                            <span class="ai-type">{course['type']}</span>
-                            <h3 class="ai-title">{course['name']}</h3>
-                            <div class="ai-provider">{course['provider']}</div>
-                            <div class="ai-desc">{course['desc']}</div>
-                        </div>
-                        <div class="ai-footer">
-                            <a href="{course['url']}" target="_blank" class="ai-link">Tutustu ➜</a>
-                        </div>
+            # POISTETTU LINKKIVAHTI AI-KOULUTUKSISTA
+            # Tämä varmistaa, että Opin.fi ja muut näkyvät AINA.
+            # aiemmin: if validate_link(course['url']):
+            valid_courses_count += 1
+            with cols[i % 3]:
+                st.markdown(f"""
+                <div class="ai-card">
+                    <div class="ai-header">
+                        <span class="ai-type">{course['type']}</span>
+                        <h3 class="ai-title">{course['name']}</h3>
+                        <div class="ai-provider">{course['provider']}</div>
+                        <div class="ai-desc">{course['desc']}</div>
                     </div>
-                    <div style="margin-bottom: 20px;"></div>
-                    """, unsafe_allow_html=True)
+                    <div class="ai-footer">
+                        <a href="{course['url']}" target="_blank" class="ai-link">Tutustu ➜</a>
+                    </div>
+                </div>
+                <div style="margin-bottom: 20px;"></div>
+                """, unsafe_allow_html=True)
         
         if valid_courses_count == 0:
             st.warning("⚠️ Yhteyksiä oppilaitosten palvelimiin ei saatu (HTTP Timeout). Kokeile myöhemmin uudelleen.")
