@@ -223,18 +223,19 @@ AMK_KEYWORDS = [
 ]
 
 AGENCIES = {
-    "Bob the Robot": "https://bobtherobot.fi/careers",
+    # Etusivut ovat turvallisimpia luoville toimistoille, ne eivät mene rikki.
+    "Bob the Robot": "https://www.bobtherobot.fi/", 
     "TBWA\Helsinki": "https://www.tbwa.fi/",
-    "SEK": "https://www.sek.fi/tyopaikat",
-    "Futurice": "https://futurice.com/careers",
-    "N2 Creative": "https://n2.fi/rekry",
-    "hasan & partners": "https://hasanpartners.fi/careers",
-    "Miltton": "https://www.miltton.com/careers",
-    "Valve": "https://www.valve.fi/ura",
-    "Avidly": "https://www.avidlyagency.com/fi/tyopaikat",
+    "SEK": "https://sek.io/en/careers/",
+    "Futurice": "https://www.futurice.com/careers",
+    "N2 Creative": "https://n2.fi/", 
+    "hasan & partners": "https://www.hasanpartners.fi/contact", 
+    "Miltton": "https://miltton.com/career",
+    "Valve": "https://www.valve.fi/join-us",
+    "Avidly": "https://www.avidlyagency.com/fi/ura-avidlylla",
     "Reaktor": "https://www.reaktor.com/careers",
-    "Vincit": "https://www.vincit.com/fi/ura",
-    "Siili Solutions": "https://www.siili.com/urat",
+    "Vincit": "https://www.vincit.com/careers",
+    "Siili Solutions": "https://www.siili.com/join-us",
 }
 
 SCHOOLS_DATA = [
@@ -344,10 +345,12 @@ SITES_INTL = {
     "Behance Jobs": "https://www.behance.net/joblist"
 }
 
+# --- PÄIVITETTY: SUOMI-SIVUSTOT (KORJATUT LINKIT) ---
 SITES_FI_NORDIC = {
-    "Journalistiliiton työpaikat": "https://journalistiliitto.fi/fi/tyoelama/avoimet-tyopaikat/",
-    "Medialiiton työpaikat": "https://www.medialiitto.fi/tyopaikat",
-    "Kulttuurijobs": "https://kulttuurijobs.fi/"
+    "Journalistiliitto (Etusivu)": "https://journalistiliitto.fi/",
+    "Medialiitto (Työpaikat)": "https://www.medialiitto.fi/medialiitto/tyopaikat/",
+    "Kuntarekry (Kulttuuri)": "https://www.kuntarekry.fi/fi/tyopaikat/kulttuuri-ja-museoala/",
+    "TAKU ry (Kulttuurituotanto)": "https://taku.fi/avainsana/tyopaikat/"
 }
 
 SITES_MEDIA = {
@@ -551,7 +554,7 @@ def main():
         
         st.caption(f"Roolihaku: {len(SEARCH_KEYWORDS)} avainsanaa")
 
-    st.title("MISSION JOBS // HUB V63.0 (Auto-Scale)")
+    st.title("MISSION JOBS // HUB V63.5 (Updated Links)")
     mode_status = "No API / Safe Mode"
     st.markdown(f"**User:** {USER_NAME} | **Core:** {selected_ai_core} ({mode_status})")
     
@@ -608,11 +611,13 @@ def main():
     with tab3:
         st.header("🏢 Linkkikirjasto")
         with st.expander("Mainostoimistot", expanded=True):
-            cols = st.columns(4)
+            # KORJAUS: Vain 3 saraketta, jotta napit mahtuvat mobiilissa
+            cols = st.columns(3) 
             for i, (name, url) in enumerate(AGENCIES.items()):
-                if validate_link(url):
-                    logo = f"https://www.google.com/s2/favicons?domain={url.split('/')[2]}&sz=64"
-                    with cols[i % 4]: st.markdown(f"""<a href="{url}" target="_blank" class="responsive-link-btn"><img src="{logo}">{name}</a>""", unsafe_allow_html=True)
+                # KORJAUS: validate_link POISTETTU tästä silmukasta
+                logo = f"https://www.google.com/s2/favicons?domain={url.split('/')[2]}&sz=64"
+                with cols[i % 3]: 
+                    st.markdown(f"""<a href="{url}" target="_blank" class="responsive-link-btn"><img src="{logo}">{name}</a>""", unsafe_allow_html=True)
         
         c1, c2, c3 = st.columns(3)
         with c1: 
@@ -953,7 +958,7 @@ def main():
         else:
             st.warning("Agentti ei löytänyt aktiivisia linkkejä tai kohteita.")
             
-    # --- TAB 10: AI KOULUTUS (UUSI) ---
+    # --- TAB 10: AI KOULUTUS (KORJATTU CSS: VÄRIT JA NAPIT) ---
     with tab10:
         st.header("🤖 Tekoälykoulutukset (Helsinki & Online)")
         st.write("Agentti on kuratoinut listan Helsingin alueen avoimista yliopistoista, AMK-verkoista ja sertifikaateista.")
@@ -962,7 +967,7 @@ def main():
         check_time = datetime.datetime.now().strftime("%H:%M")
         st.info(f"✅ Linkit validoitu ja päivitetty automaattisesti: Tänään klo {check_time}")
 
-        # CSS Tyylittely korteille
+        # CSS Tyylittely korteille (KORJAUKSET)
         st.markdown("""
         <style>
         .ai-card {
@@ -970,7 +975,8 @@ def main():
             border: 1px solid #4DA6FF;
             border-radius: 12px;
             padding: 20px;
-            height: 280px;
+            /* KORJAUS: Käytetään min-height kiinteän korkeuden sijaan */
+            min-height: 300px; 
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -989,32 +995,32 @@ def main():
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #00d4ff;
+            color: #00d4ff !important; /* Pakotettu syaani */
             font-weight: bold;
             margin-bottom: 5px;
             display: block;
         }
         .ai-title {
-            color: #ffffff;
+            color: #ffffff !important; /* Pakotettu valkoinen */
             font-size: 1.2rem;
             font-weight: 700;
             margin: 0 0 10px 0;
             line-height: 1.3;
         }
         .ai-provider {
-            color: #b0b0b0;
+            color: #b0b0b0 !important; /* Pakotettu harmaa */
             font-size: 0.9rem;
             margin-bottom: 15px;
             font-style: italic;
         }
         .ai-desc {
-            color: #e0e0e0;
+            color: #e0e0e0 !important; /* Pakotettu vaaleanharmaa */
             font-size: 0.9rem;
             line-height: 1.5;
             flex-grow: 1;
         }
         .ai-footer {
-            margin-top: 15px;
+            margin-top: 20px; /* Lisää tilaa napin yläpuolelle */
             text-align: right;
         }
         .ai-link {
@@ -1026,6 +1032,8 @@ def main():
             font-weight: bold;
             font-size: 0.9rem;
             transition: background 0.2s;
+            display: inline-block;
+            white-space: nowrap; /* Estää napin tekstin rivittymisen */
         }
         .ai-link:hover {
             background-color: #008cff;
