@@ -386,12 +386,13 @@ TARGET_ROLES = [
     "Junior Designer", "Video Editor"
 ]
 
+# KORJATTU: Työhakusanat ilman koulutustermejä
 SEARCH_KEYWORDS = [
     "graafinen suunnittelija", "sisällöntuottaja", "visuaalinen suunnittelija",
     "projektipäällikkö", "viestintäsuunnittelija", "markkinointisuunnittelija",
     "UI designer", "UX designer", "creative producer", "content manager", 
     "mainonta", "luova ala", "graafinen suunnittelu", "digitaalinen viestintä",
-    "osatutkinto", "tutkinnon osa", "osatutkintokoulutus", "ICT"
+    "ICT"
 ]
 
 FUTURE_MAKER_LINK = "https://janmyllymaki.wixsite.com/future-maker/fi"
@@ -455,7 +456,6 @@ def main():
         st.title("⚙️ Asetukset")
         st.header("🧠 Äly")
         
-        # Vain Local Core käytössä
         selected_ai_core = st.radio("Malli:", list(AI_LOGIC_CORE.keys()), index=0)
         
         st.info("ℹ️ Local Mode: Sovellus käyttää sisäistä logiikkaa ilman ulkoisia rajapintoja.")
@@ -652,7 +652,15 @@ def main():
 
         with c2:
             st.subheader("🎓 Koulutus")
-            training_topics = {"Kaikki aiheet": "media viestintä", "Viestintä": "viestintä", "Graafinen": "graafinen"}
+            # KORJATTU: Koulutussanat ja osatutkinnot eriytetty tähän
+            training_topics = {
+                "Kaikki aiheet": "media viestintä", 
+                "Viestintä": "viestintä", 
+                "Graafinen": "graafinen",
+                "Osatutkinnot": "osatutkinto",
+                "Tutkinnon osat": "tutkinnon osa",
+                "Osatutkintokoulutus": "osatutkintokoulutus"
+            }
             selected_topic = st.selectbox("Valitse ala:", list(training_topics.keys()))
             q_training = training_topics[selected_topic]
             tm_train_url = f"https://tyomarkkinatori.fi/henkiloasiakkaat/koulutukset-ja-palvelut?q={q_training}"
