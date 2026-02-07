@@ -41,7 +41,8 @@ elif 0 <= weekday <= 4 and hour == 11:
 # ---------------------------------------------------------
 # 0. KONFIGURAATIO (TÄYTYY OLLA ENSIMMÄINEN STREAMLIT-KOMENTO)
 # ---------------------------------------------------------
-st.set_page_config(layout="wide", page_title="Future Maker Hub", page_icon="🚀")
+# HUOM: layout="wide" varmistaa, että sovellus käyttää koko näytön leveyden
+st.set_page_config(layout="wide", page_title="Mission Jobs Hub", page_icon="🚀")
 
 # --- PÄIVITYSVAROITUS (24H LOGIIKKA) ---
 if os.path.exists(LOG_FILE):
@@ -62,7 +63,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 # 1. ASETUKSET & DATA & TALLENNUS
 # ---------------------------------------------------------
 
-USER_NAME = "Creative Pro"
+USER_NAME = "Mission Jobs Commander"
 STORAGE_FILE = "local_storage.json"
 # Google Sheet ID (Public CSV export)
 SHEET_ID = "12_hQ54nccgljOCbDGPOvFzYBQ6KhQkdk1GDdpaNTGyM"
@@ -120,7 +121,7 @@ def validate_link(url):
 
 # AI-LOGIIKKA
 AI_LOGIC_CORE = {
-    "Gemini":  {"provider": "Google", "status": "Hybrid (API / Simuloitu)", "role": "Primary"},
+    "Gemini":  {"provider": "Google", "status": "Simuloitu (Safe Mode)", "role": "Primary"},
     "ChatGPT": {"provider": "OpenAI", "status": "Simuloitu", "role": "Secondary"},
     "Claude":  {"provider": "Anthropic", "status": "Simuloitu", "role": "Secondary"},
     "Copilot": {"provider": "Microsoft", "status": "Simuloitu", "role": "Secondary"}
@@ -128,7 +129,6 @@ AI_LOGIC_CORE = {
 
 # --- DATASETS ---
 
-# --- TAB 10: LAAJENNETTU AI-KOULUTUSLISTA (CREATIVE FOCUS) ---
 AI_STUDIES = [
     {
         "name": "Generative AI Learning Path",
@@ -202,7 +202,6 @@ AI_STUDIES = [
     }
 ]
 
-# --- UUDET HAKUSANAT: YLIOPISTO & AMK (AI & LUOVA ALA) ---
 UNI_KEYWORDS = [
     "laskennallinen luovuus",
     "computational creativity",
@@ -214,18 +213,18 @@ UNI_KEYWORDS = [
 ]
 
 AMK_KEYWORDS = [
-    "palvelumuotoilu",      # Service Design + AI on kova yhdistelmä
-    "erikoistumiskoulutus", # Avainsana ammattilaisille
-    "osaajakoulutus",       # Täsmäosaaminen
+    "palvelumuotoilu",
+    "erikoistumiskoulutus",
+    "osaajakoulutus",
     "mediatuotanto",
     "visuaalinen suunnittelu",
-    "XR",                   # Extended Reality
+    "XR",
     "virtuaalituotanto"
 ]
 
 AGENCIES = {
     "Bob the Robot": "https://bobtherobot.fi/careers",
-    "TBWA\Helsinki": "https://www.tbwa.fi/", # PÄIVITETTY PYYNNÖSTÄ
+    "TBWA\Helsinki": "https://www.tbwa.fi/",
     "SEK": "https://www.sek.fi/tyopaikat",
     "Futurice": "https://futurice.com/careers",
     "N2 Creative": "https://n2.fi/rekry",
@@ -263,7 +262,6 @@ SCHOOLS_DATA = [
         "logo": "https://www.haaga-helia.fi/themes/custom/hh/logo.svg",
         "status": "AMK / Haku"
     },
-    # LAUREA POISTETTU PYYNNÖSTÄ
     {
         "name": "Humak (Kulttuurituottaja)", 
         "url": "https://www.humak.fi/koulutus/kulttuurituottaja/", 
@@ -463,27 +461,53 @@ def gemini_safe_fetch(job_desc: str, user_cv: str, api_key: str = "") -> str:
 
 st.markdown("""
 <style>
-    @media (max-width: 768px) {
-        .block-container { padding-left: 1rem !important; padding-right: 1rem !important; padding-top: 2rem !important; }
-        h1 { font-size: 1.8rem !important; }
-        .stButton button { width: 100%; }
+    /* RESPONSIVE SCALING FIXES */
+    .stApp {
+        overflow-x: hidden; /* Piilota vaakavieritys mobiilissa */
     }
+    
+    @media (max-width: 768px) {
+        .block-container { 
+            padding-left: 0.5rem !important; 
+            padding-right: 0.5rem !important; 
+            padding-top: 2rem !important; 
+        }
+        h1 { font-size: 1.6rem !important; }
+        h2 { font-size: 1.4rem !important; }
+        h3 { font-size: 1.2rem !important; }
+        .stButton button { width: 100%; } /* Napit täyteen leveyteen */
+        
+        /* Kortit ja containerit */
+        .ai-card { height: auto !important; min-height: 280px; }
+    }
+    
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+
     .responsive-link-btn {
         display: flex; align-items: center; justify-content: center; padding: 12px; 
         background: #262730; border: 1px solid #464b5f; border-radius: 8px; 
         margin-bottom: 8px; text-decoration: none; color: white !important; width: 100%;
         transition: background 0.2s; font-weight: 500;
+        box-sizing: border-box; /* Varmistaa paddingin pysyvän leveyden sisällä */
     }
     .responsive-link-btn:hover { background: #363740; }
     .responsive-link-btn img { width: 20px; height: 20px; margin-right: 10px; object-fit: contain; }
+    
     .cta-container { display: flex; justify-content: center; margin: 20px 0; width: 100%; }
     .cta-button {
         display: inline-block; background-color: #0a66c2; color: white !important; 
         padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold;
         text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 100%;
+        width: 100%; /* Mobiiliystävällinen leveys */
     }
     .cta-button.dark { background-color: #333; }
-    @media (max-width: 576px) { .cta-button { width: 100%; padding: 14px 20px; font-size: 1rem; } }
+    
+    @media (min-width: 769px) {
+        .cta-button { width: auto; } /* Desktopilla normaali leveys */
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -493,6 +517,9 @@ def main():
         st.session_state.tracked_companies = load_local_data()
     if 'watched_schools' not in st.session_state:
         st.session_state.watched_schools = []
+    
+    # API AVAIN AINA TYHJÄ (SIMULOITU TILA)
+    st.session_state.api_key = ""
         
     # MUOKKAUSTILAN HALLINTA
     if 'edit_states' not in st.session_state:
@@ -504,29 +531,9 @@ def main():
         st.header("🤖 AI-Ydin")
         selected_ai_core = st.radio("Valitse suoritusmalli:", list(AI_LOGIC_CORE.keys()), index=0)
         st.caption(f"Status: {AI_LOGIC_CORE[selected_ai_core]['status']}")
-        st.markdown("---")
         
-        # API-KENTTÄ (POISTETTU KÄYTÖSTÄ PYYNNÖSTÄ)
-        if 'api_key' not in st.session_state: st.session_state.api_key = ''
+        st.info("ℹ️ Sovellus toimii 'Safe Mode' -tilassa ilman API-avainta. Tekoälytoiminnot ovat simuloituja.")
         
-        # Varmistetaan että API-avain on tyhjä, eikä käyttäjä voi syöttää sitä
-        st.session_state.api_key = ""
-        st.caption("🔒 API-avain poistettu käytöstä - Vain Simulaatiotila")
-        
-        # Alkuperäinen koodi kommentoitu pois:
-        # api_input = st.text_input(
-        #     "Gemini API-avain (Valinnainen)", 
-        #     type="password", 
-        #     value=st.session_state.api_key, 
-        #     help="Jos jätät tyhjäksi, sovellus toimii simulaatiotilassa."
-        # )
-        
-        # if api_input: 
-        #     st.session_state.api_key = api_input
-        #     st.success("API-avain aktiivinen!")
-        # else: 
-        #     st.caption("Ei avainta - Simulaatiotila")
-            
         st.markdown("---")
         
         # --- ASETUKSET: KOHDENNETTU HAKU ---
@@ -544,8 +551,8 @@ def main():
         
         st.caption(f"Roolihaku: {len(SEARCH_KEYWORDS)} avainsanaa")
 
-    st.title("FUTURE MAKER // HUB V60.5")
-    mode_status = "API Mode" if st.session_state.api_key and selected_ai_core == "Gemini" else "No API Mode"
+    st.title("MISSION JOBS // HUB V63.0 (Auto-Scale)")
+    mode_status = "No API / Safe Mode"
     st.markdown(f"**User:** {USER_NAME} | **Core:** {selected_ai_core} ({mode_status})")
     
     # --- VÄLILEHDET (SISÄLTÄÄ NYT AI KOULUTUKSEN) ---
@@ -567,39 +574,16 @@ def main():
         with btn_col1:
             if st.button("🚀 KIRJOITA HAKEMUS", type="primary"):
                 if job_desc and user_cv:
-                    if selected_ai_core == "Gemini" and st.session_state.api_key:
-                        with st.spinner("Gemini API kirjoittaa hakemusta..."):
-                            try:
-                                genai.configure(api_key=st.session_state.api_key)
-                                model = genai.GenerativeModel('gemini-1.5-flash')
-                                prompt = "Kirjoita selkeä ja asiallinen työhakemus avoimeen harjoittelupaikkaan."
-                                response = model.generate_content(prompt, request_options={'timeout': 30})
-                                st.text_area("Valmis hakemus:", value=response.text, height=600)
-                                st.download_button(
-                                    label="💾 Lataa hakemus (TXT)",
-                                    data=response.text,
-                                    file_name="hakemus_luonnos.txt",
-                                    mime="text/plain"
-                                )
-                            except Exception as e: 
-                                st.error(f"API-virhe: {e}. Varmista API-avain ja yhteys.")
-                    else:
-                        st.success(f"Agentti {selected_ai_core} on analysoinut tehtävän (Simulaatio).")
-                        constructed_prompt = f"TOIMI SEURAAVASTI ({selected_ai_core}):\nKirjoita erottuva työhakemus tehtävään: {job_desc[:50]}...\nHakijan tausta: {user_cv[:50]}...\nPainotus: Moderni, vakuuttava."
-                        st.info("ℹ️ **NO API MODE:** Alla optimoitu kehote (Prompt), jonka voit kopioida.")
-                        st.code(constructed_prompt, language="text")
+                    # SIMULOITU TILA AINA KÄYTÖSSÄ
+                    st.success(f"Agentti {selected_ai_core} on analysoinut tehtävän (Safe Mode).")
+                    constructed_prompt = f"TOIMI SEURAAVASTI ({selected_ai_core}):\nKirjoita erottuva työhakemus tehtävään: {job_desc[:50]}...\nHakijan tausta: {user_cv[:50]}...\nPainotus: Moderni, vakuuttava."
+                    st.info("ℹ️ **SAFE MODE:** Alla optimoitu kehote (Prompt), jonka voit kopioida ChatGPT:hen tai Geminiin.")
+                    st.code(constructed_prompt, language="text")
                 else: st.warning("Täytä kentät.")
         
         with btn_col2:
             if st.button("🛡️ SAFE FETCH (Strict Mode)"):
-                if job_desc and user_cv:
-                    with st.spinner("Suoritetaan tietoturvallista hakua (Read-Only)..."):
-                        result = gemini_safe_fetch(job_desc, user_cv, st.session_state.api_key)
-                        st.subheader("🔒 Safe Fetch Results")
-                        st.info("GDPR & Domain Whitelist Active")
-                        st.code(result, language="text")
-                else:
-                    st.warning("Syötä hakutekstit ensin.")
+                st.info("API-haku poistettu käytöstä. Käytä simuloitua tilaa.")
 
     # --- TAB 2: ANALYSOI ---
     with tab2:
@@ -615,23 +599,10 @@ def main():
             st.progress(score/5)
             
             if input_desc:
-                if selected_ai_core == "Gemini" and st.session_state.api_key:
-                    with st.spinner("Gemini API tulkitsee..."):
-                        try:
-                            genai.configure(api_key=st.session_state.api_key)
-                            model = genai.GenerativeModel('gemini-1.5-flash')
-                            response = model.generate_content(
-                                f"Analysoi lyhyesti miksi tämä työ sopii profiililleni (Luova/AI). Ilmoitus: {input_desc}",
-                                request_options={'timeout': 30}
-                            )
-                            st.info("💡 **TEKOÄLYN TULKINTA (API):**")
-                            st.write(response.text)
-                        except: st.error("API-virhe.")
-                else:
-                    st.info(f"💡 **Agentin ({selected_ai_core}) looginen päätelmä (Simulaatio):**")
-                    if score >= 4.0: st.write("✅ **Vahva osuma!**")
-                    elif score >= 2.5: st.write("⚠️ **Kohtalainen osuma.**")
-                    else: st.write("🛑 **Heikko osuma.**")
+                st.info(f"💡 **Agentin ({selected_ai_core}) looginen päätelmä (Simulaatio):**")
+                if score >= 4.0: st.write("✅ **Vahva osuma!**")
+                elif score >= 2.5: st.write("⚠️ **Kohtalainen osuma.**")
+                else: st.write("🛑 **Heikko osuma.**")
 
     # --- TAB 3: LINKIT (VALIDOITU) ---
     with tab3:
@@ -668,7 +639,8 @@ def main():
             "Keskustelu": {"bg": "#D1ECF1", "text": "#0C5460"},
             "Haastattelu": {"bg": "#C3E6CB", "text": "#155724"},
             "Ei vastausta": {"bg": "#E2E3E5", "text": "#6C757D"},
-            "Hylätty": {"bg": "#F8D7DA", "text": "#721C24"}
+            "Hylätty": {"bg": "#F8D7DA", "text": "#721C24"},
+            "Kiinnostunut": {"bg": "#E2E3E5", "text": "#333333"}
         }
 
         # Lisää uusi hakemus
@@ -772,11 +744,67 @@ def main():
         st.write("Agentti tarkkailee taustalla linkkejä ja koulutuksia.")
         st.info("💡 Katso 'Agentin Suositukset' -välilehti nähdäksesi automaattiset ehdotukset.")
 
-    # --- TAB 7: TYÖMARKKINATORI ---
+    # --- TAB 7: TYÖMARKKINATORI (PUDOTUSVALIKOT) ---
     with tab7:
-        st.header("🇫🇮 Työmarkkinatori")
-        tm_url = f"https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat/?q={'%20'.join(SEARCH_KEYWORDS)}&region=Uusimaa"
-        st.markdown(f"""<div class="cta-container"><a href="{tm_url}" target="_blank" class="cta-button">👉 Avaa Työmarkkinatori</a></div>""", unsafe_allow_html=True)
+        st.header("🇫🇮 Työmarkkinatori: Mission Jobs -haku")
+        st.info("✅ Käytä valikoita kohdentaaksesi haun tarkemmin.")
+
+        c1, c2 = st.columns(2)
+
+        # 1. TYÖPAIKAT (Pudotusvalikko)
+        with c1:
+            st.subheader("💼 Avoimet Työpaikat")
+            
+            # Lisätään "Kaikki" -vaihtoehto listan kärkeen
+            job_options = ["Kaikki luovat alat"] + SEARCH_KEYWORDS
+            selected_job_role = st.selectbox("Valitse ammattinimike:", job_options)
+            
+            # Logiikka valinnan perusteella
+            if selected_job_role == "Kaikki luovat alat":
+                q_jobs = "%20".join(SEARCH_KEYWORDS)
+            else:
+                q_jobs = selected_job_role
+            
+            tm_jobs_url = f"https://tyomarkkinatori.fi/henkiloasiakkaat/avoimet-tyopaikat?q={q_jobs}&location=Uusimaa"
+            
+            st.markdown(f"""
+            <div class="cta-container">
+                <a href="{tm_jobs_url}" target="_blank" class="cta-button">
+                   👉 HAE: {selected_job_role.upper()}
+                </a>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # 2. KOULUTUKSET (Pudotusvalikko)
+        with c2:
+            st.subheader("🎓 Kurssit & Lyhytkoulutus")
+            
+            # Määritellään teemat ja niiden hakusanat
+            training_topics = {
+                "Kaikki aiheet": "media viestintä graafinen digimarkkinointi",
+                "Viestintä & Media": "viestintä media",
+                "Graafinen & Visuaalinen": "graafinen visuaalinen",
+                "Digimarkkinointi": "digimarkkinointi some",
+                "Tuotanto & Projektit": "tuottaja projektipäällikkö"
+            }
+            
+            selected_topic = st.selectbox("Valitse koulutusala:", list(training_topics.keys()))
+            
+            # Haetaan oikeat hakusanat sanakirjasta
+            q_training = training_topics[selected_topic].replace(" ", "%20")
+            
+            tm_training_url = f"https://tyomarkkinatori.fi/henkiloasiakkaat/koulutukset-ja-palvelut?q={q_training}"
+            
+            st.markdown(f"""
+            <div class="cta-container">
+                <a href="{tm_training_url}" target="_blank" class="cta-button dark">
+                   👉 HAE: {selected_topic.upper()}
+                </a>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.divider()
+        st.caption("Valinnat päivittävät hakupainikkeen linkin automaattisesti.")
 
     # --- TAB 8: PORTFOLIO & DATA (UPDATED) ---
     with tab8:
@@ -1009,9 +1037,6 @@ def main():
         valid_courses_count = 0
         
         for i, course in enumerate(AI_STUDIES):
-            # POISTETTU LINKKIVAHTI AI-KOULUTUKSISTA
-            # Tämä varmistaa, että Opin.fi ja muut näkyvät AINA.
-            # aiemmin: if validate_link(course['url']):
             valid_courses_count += 1
             with cols[i % 3]:
                 st.markdown(f"""
