@@ -92,7 +92,11 @@ def validate_link(url):
     except:
         return False
 
-# --- LOCAL INTELLIGENCE ENGINE ---
+# --- INTELLIGENCE ENGINE (LOCAL ONLY) ---
+
+AI_LOGIC_CORE = {
+    "Local Core":  {"provider": "Internal", "status": "Active", "role": "Primary"},
+}
 
 def local_text_analysis(text):
     """Analysoi tekstin sisäisellä logiikalla."""
@@ -121,7 +125,7 @@ def local_text_analysis(text):
     return found_stats, final_score, missing_words
 
 def generate_template_application(company, role, job_text, user_background):
-    """Luo älykkään hakemuspohjan (Local)."""
+    """Luo älykkään hakemuspohjan."""
     date_str = datetime.datetime.now().strftime("%d.%m.%Y")
     highlights = []
     if "ai" in job_text.lower(): highlights.append("tekoälyosaamiseni")
@@ -226,13 +230,6 @@ AI_STUDIES = [
         "type": "MOOC / ETÄ"
     },
     {
-        "name": "Building AI",
-        "provider": "Helsingin Yliopisto & Reaktor",
-        "url": "https://buildingai.elementsofai.com/fi",
-        "desc": "Elements of AI:n jatko-osa. Hieman teknisempi, opettaa AI:n luomista.",
-        "type": "MOOC / ETÄ"
-    },
-    {
         "name": "FiTech - Tekoäly (Koko Suomi)",
         "provider": "Yliopistoverkosto (Aalto ym.)",
         "url": "https://fitech.io/fi/opinnot/?s=teko%C3%A4ly",
@@ -247,13 +244,6 @@ AI_STUDIES = [
         "type": "YLIOPISTO (HKI)"
     },
     {
-        "name": "XAMK Pulse (Open)",
-        "provider": "XAMK",
-        "url": "https://www.xamk.fi/fi/koulutukset/avoin-amk-koulutuskalenteri/",
-        "desc": "Vahva peliala ja 3D-osaaminen. Paljon etäkursseja visuaaliseen suunnitteluun.",
-        "type": "AMK / ETÄ"
-    },
-    {
         "name": "3AMK (AI & Future)",
         "provider": "Metropolia, Haaga-Helia, Laurea",
         "url": "https://www.3amk.fi/",
@@ -266,13 +256,6 @@ AI_STUDIES = [
         "url": "https://www.deeplearning.ai/courses/ai-for-everyone/",
         "desc": "Andrew Ng:n kurssi bisnespuolelle ja tuottajille. Ei vaadi koodausta.",
         "type": "KV / ETÄ"
-    },
-    {
-        "name": "Metropolia Avoin: ICT & Media",
-        "provider": "Metropolia",
-        "url": "https://www.metropolia.fi/fi/opiskelu/avoin-amk/opintotarjonnan-haku",
-        "desc": "Pääkaupunkiseudun laajin AMK-tarjonta. Tarkista XR/AI -kurssit.",
-        "type": "AMK (HKI)"
     }
 ]
 
@@ -297,6 +280,7 @@ AMK_KEYWORDS = [
 ]
 
 AGENCIES = {
+    "Kuulu": "https://www.kuulu.fi/",
     "Bob the Robot": "https://www.bobtherobot.fi/", 
     "TBWA\Helsinki": "https://www.tbwa.fi/",
     "SEK": "https://sek.io/en/careers/",
@@ -469,7 +453,13 @@ def main():
 
     with st.sidebar:
         st.title("⚙️ Asetukset")
+        st.header("🧠 Äly")
         
+        # Vain Local Core käytössä
+        selected_ai_core = st.radio("Malli:", list(AI_LOGIC_CORE.keys()), index=0)
+        
+        st.info("ℹ️ Local Mode: Sovellus käyttää sisäistä logiikkaa ilman ulkoisia rajapintoja.")
+
         st.markdown("---")
         toggle_startup = st.toggle("🚀 Start-upit", value=False)
         if toggle_startup:
@@ -499,11 +489,11 @@ def main():
         
         if st.button("🚀 LUO HAKEMUS", type="primary"):
             if job_desc and user_cv:
-                with st.spinner("Luodaan hakemuspohjaa (Local Mode)..."):
+                with st.spinner("Luodaan hakemuspohjaa..."):
                     draft = generate_template_application(company_name if company_name else "[YRITYS]", role_name if role_name else "[ROOLI]", job_desc, user_cv)
-                    st.subheader("📄 Hakemuspohja:")
+                    st.subheader("📄 Hakemuspohja (Local Mode):")
+                    st.info("💡 Tämä on älykäs pohja, jonka voit viimeistellä.")
                     st.text_area("", value=draft, height=600)
-                    st.download_button("💾 Lataa", draft, "hakemus.txt")
             else:
                 st.warning("Täytä ainakin ilmoitus ja oma tausta.")
 
@@ -531,7 +521,7 @@ def main():
                     if missing:
                         st.write("⚠️ **Harkitse näiden mainitsemista:**")
                         for m in missing[:5]: st.markdown(f"- {m.capitalize()}")
-                st.info("💡 Tämä on automaattinen avainsana-analyysi (Local Mode).")
+                st.info("💡 Automaattinen avainsana-analyysi.")
 
     # --- TAB 3: LINKIT (FULL LIST RESTORED) ---
     with tab3:
@@ -686,6 +676,7 @@ def main():
             c1, c2 = st.columns([2, 1])
             with c1: 
                 st.subheader("📊 Top Vierailijat")
+                # KORJATTU: Käytetään normaalia if-lausetta ternaryn sijaan, jotta vältetään "Magic print" -ongelma
                 if len(cols) > 2:
                     st.bar_chart(df_visitors[col_company].value_counts().head(7), color="#4DA6FF")
             with c2: st.subheader("📋 Lokitiedot"); st.dataframe(df_visitors.iloc[::-1], use_container_width=True, height=300)
