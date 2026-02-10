@@ -12,6 +12,13 @@ import subprocess
 import re
 from collections import Counter
 
+# Huom: Poistettu aktiivinen riippuvuus google.generativeai -kirjastosta,
+# mutta import jätetty varalle, jos ympäristössä on riippuvuuksia.
+try:
+    import google.generativeai as genai
+except ImportError:
+    pass
+
 # ---------------------------------------------------------
 # AUTOMAATTINEN PÄIVITYSLOGIIKKA
 # ---------------------------------------------------------
@@ -92,7 +99,26 @@ def validate_link(url):
     except:
         return False
 
-# --- INTELLIGENCE ENGINE (LOCAL ONLY) ---
+# --- UUSI FUNKTIO: AIKAEROT ---
+def calculate_days_diff(date_str, is_future=False):
+    """Laskee päivien erotuksen nykyhetkeen."""
+    if not date_str: return 0
+    now = datetime.datetime.now()
+    try:
+        # Jos kyseessä on haastattelu (YYYY-MM-DD)
+        if "-" in str(date_str):
+            dt = datetime.datetime.strptime(str(date_str), "%Y-%m-%d")
+            diff = (dt - now).days + 1 # +1 jotta huominen on 1
+            return diff
+        
+        # Jos kyseessä on hakemus (dd.mm.)
+        full_date = f"{date_str}{now.year}"
+        dt = datetime.datetime.strptime(full_date, "%d.%m.%Y")
+        return (now - dt).days
+    except:
+        return 0
+
+# --- HYBRID INTELLIGENCE ENGINE (LOCAL ONLY MODE) ---
 
 AI_LOGIC_CORE = {
     "Local Core":  {"provider": "Internal", "status": "Active", "role": "Primary"},
@@ -280,19 +306,19 @@ AMK_KEYWORDS = [
 ]
 
 AGENCIES = {
-    "Kuulu": "https://www.kuulu.fi/",
-    "Bob the Robot": "https://www.bobtherobot.fi/", 
-    "TBWA\Helsinki": "https://www.tbwa.fi/",
-    "SEK": "https://sek.io/en/careers/",
-    "Futurice": "https://www.futurice.com/careers",
-    "N2 Creative": "https://n2.fi/", 
-    "hasan & partners": "https://www.hasanpartners.fi/contact", 
-    "Miltton": "https://miltton.com/career",
-    "Valve": "https://www.valve.fi/join-us",
     "Avidly": "https://www.avidlyagency.com/fi/ura-avidlylla",
+    "Bob the Robot": "https://www.bobtherobot.fi/",
+    "Futurice": "https://www.futurice.com/careers",
+    "hasan & partners": "https://www.hasanpartners.fi/contact",
+    "Kuulu": "https://www.kuulu.fi/",
+    "Miltton": "https://miltton.com/career",
+    "N2 Creative": "https://n2.fi/",
     "Reaktor": "https://www.reaktor.com/careers",
-    "Vincit": "https://www.vincit.com/careers",
+    "SEK": "https://sek.io/en/careers/",
     "Siili Solutions": "https://www.siili.com/join-us",
+    "TBWA\Helsinki": "https://www.tbwa.fi/",
+    "Valve": "https://www.valve.fi/join-us",
+    "Vincit": "https://www.vincit.com/careers",
 }
 
 SCHOOLS_DATA = [
@@ -371,12 +397,12 @@ SCHOOLS_DATA = [
 ]
 
 STARTUPS_PK = {
-    "Maria 01 (Careers)": "https://maria.io/careers/",
-    "The Hub (Helsinki Jobs)": "https://thehub.io/jobs?location=Helsinki",
     "Aalto Startup Center": "https://startupcenter.aalto.fi/",
     "Kiuas Accelerator": "https://www.kiuas.com/",
-    "Wolt Careers": "https://careers.wolt.com/en",
-    "Supercell Careers": "https://supercell.com/en/careers/"
+    "Maria 01 (Careers)": "https://maria.io/careers/",
+    "Supercell Careers": "https://supercell.com/en/careers/",
+    "The Hub (Helsinki Jobs)": "https://thehub.io/jobs?location=Helsinki",
+    "Wolt Careers": "https://careers.wolt.com/en"
 }
 
 TARGET_ROLES = [
@@ -386,7 +412,6 @@ TARGET_ROLES = [
     "Junior Designer", "Video Editor"
 ]
 
-# KORJATTU: Työhakusanat ilman koulutustermejä
 SEARCH_KEYWORDS = [
     "graafinen suunnittelija", "sisällöntuottaja", "visuaalinen suunnittelija",
     "projektipäällikkö", "viestintäsuunnittelija", "markkinointisuunnittelija",
@@ -398,15 +423,15 @@ SEARCH_KEYWORDS = [
 FUTURE_MAKER_LINK = "https://janmyllymaki.wixsite.com/future-maker/fi"
 
 SITES_INTL = {
-    "Krop": "https://www.krop.com/", 
+    "Behance Jobs": "https://www.behance.net/joblist",
     "Design Jobs Board": "https://www.designjobsboard.com/",
-    "Behance Jobs": "https://www.behance.net/joblist"
+    "Krop": "https://www.krop.com/"
 }
 
 SITES_FI_NORDIC = {
     "Journalistiliitto (Etusivu)": "https://journalistiliitto.fi/",
-    "Medialiitto (Työpaikat)": "https://www.medialiitto.fi/medialiitto/tyopaikat/",
     "Kuntarekry (Kulttuuri)": "https://www.kuntarekry.fi/fi/tyopaikat/kulttuuri-ja-museoala/",
+    "Medialiitto (Työpaikat)": "https://www.medialiitto.fi/medialiitto/tyopaikat/",
     "TAKU ry": "https://taku.fi/avainsana/tyopaikat/"
 }
 
@@ -451,14 +476,18 @@ def main():
     if 'tracked_companies' not in st.session_state: st.session_state.tracked_companies = load_local_data()
     if 'edit_states' not in st.session_state: st.session_state.edit_states = {}
     if 'dismissed_suggestions' not in st.session_state: st.session_state.dismissed_suggestions = []
+    
+    # Pakotetaan API tyhjäksi, varmuuden vuoksi
+    st.session_state.api_key = ""
 
     with st.sidebar:
         st.title("⚙️ Asetukset")
         st.header("🧠 Äly")
         
-        selected_ai_core = st.radio("Malli:", list(AI_LOGIC_CORE.keys()), index=0)
+        # Vain Local Mode käytössä
+        selected_ai_core = st.radio("Malli:", ["Local Core"], index=0)
         
-        st.info("ℹ️ Local Mode: Sovellus käyttää sisäistä logiikkaa ilman ulkoisia rajapintoja.")
+        st.info("ℹ️ Local Mode: Sovellus toimii itsenäisesti sisäisellä logiikalla. Ulkoinen tekoäly on poistettu käytöstä.")
 
         st.markdown("---")
         toggle_startup = st.toggle("🚀 Start-upit", value=False)
@@ -467,8 +496,9 @@ def main():
             for name, url in STARTUPS_PK.items():
                 if validate_link(url): st.markdown(f"- [{name}]({url})")
 
-    st.title("MISSION JOBS // HUB V67.1 (Clean UI)")
-    st.markdown(f"**Tila:** 🟢 ONLINE (LOCAL) | **Käyttäjä:** {USER_NAME}")
+    st.title("MISSION JOBS // HUB V68.3 (Local)")
+    status_text = "🟢 ONLINE (LOCAL)"
+    st.markdown(f"**Tila:** {status_text} | **Käyttäjä:** {USER_NAME} | **Core:** {selected_ai_core}")
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "✨ HAKEMUS", "📊 ANALYSOI", "🏢 LINKIT", "⚡️ TEHOHAKU", 
@@ -489,10 +519,11 @@ def main():
         
         if st.button("🚀 LUO HAKEMUS", type="primary"):
             if job_desc and user_cv:
-                with st.spinner("Luodaan hakemuspohjaa..."):
+                # LOCAL LOGIC ONLY
+                with st.spinner("Luodaan älykästä hakemuspohjaa..."):
                     draft = generate_template_application(company_name if company_name else "[YRITYS]", role_name if role_name else "[ROOLI]", job_desc, user_cv)
-                    st.subheader("📄 Hakemuspohja (Local Mode):")
-                    st.info("💡 Tämä on älykäs pohja, jonka voit viimeistellä.")
+                    st.subheader("📄 Hakemuspohja:")
+                    st.info("💡 Tässä on valmis pohja, johon on upotettu avainsanat ja rakenne. Viimeistele tiedot itse.")
                     st.text_area("", value=draft, height=600)
             else:
                 st.warning("Täytä ainakin ilmoitus ja oma tausta.")
@@ -512,6 +543,7 @@ def main():
             st.progress(min(score/5, 1.0))
 
             if input_desc_analysis:
+                # LOCAL ANALYSIS
                 stats, keyword_score, missing = local_text_analysis(input_desc_analysis)
                 c1, c2 = st.columns(2)
                 with c1:
@@ -521,7 +553,7 @@ def main():
                     if missing:
                         st.write("⚠️ **Harkitse näiden mainitsemista:**")
                         for m in missing[:5]: st.markdown(f"- {m.capitalize()}")
-                st.info("💡 Automaattinen avainsana-analyysi.")
+                    st.info("💡 Tämä on automaattinen avainsana-analyysi.")
 
     # --- TAB 3: LINKIT (FULL LIST RESTORED) ---
     with tab3:
@@ -633,10 +665,116 @@ def main():
     if not st.session_state.tracked_companies:
         st.info("Seurantalista on tyhjä.")
 
-    # --- TAB 6: AGENTTI ---
+    # --- TAB 6: AGENTTI (SMART QUOTA - LOCAL ONLY) ---
     with tab6:
         st.header("🕵️ Ura-agentti")
-        st.write("Agentti tarkkailee taustalla linkkejä ja koulutuksia.")
+        st.info("Agentti valvoo työnhakuvelvoitetta ja aikatauluja.")
+        
+        # --- VELVOITELASKURI ---
+        MONTHLY_QUOTA = 4
+        current_month = datetime.datetime.now().month
+        apps_this_month = 0
+        
+        for item in st.session_state.tracked_companies:
+            if item['status'] == "Kiinnostunut": continue 
+            
+            try:
+                date_parts = item.get('date', '').split('.')
+                if len(date_parts) >= 2:
+                    month_num = int(date_parts[1])
+                    if month_num == current_month:
+                        apps_this_month += 1
+            except:
+                pass 
+
+        quota_progress = min(apps_this_month / MONTHLY_QUOTA, 1.0)
+        remaining_quota = MONTHLY_QUOTA - apps_this_month
+
+        st.subheader("📉 Työnhakuvelvoite (Tämä kuu)")
+        if remaining_quota > 0:
+            st.warning(f"⚠️ Olet lähettänyt **{apps_this_month} / {MONTHLY_QUOTA}** hakemusta. Vielä {remaining_quota} puuttuu!")
+            st.progress(quota_progress, text=f"Valmiina: {int(quota_progress*100)}%")
+        else:
+            st.balloons()
+            st.success(f"✅ **MAHTAVAA!** Olet täyttänyt kuukauden kiintiön ({apps_this_month} / {MONTHLY_QUOTA}).")
+            st.progress(1.0, text="Velvoite täytetty 100%")
+
+        st.divider()
+        st.subheader("🔔 Ilmoitukset")
+
+        agent_actions_found = False
+        
+        # LOOPATAAN LÄPI SEURATTAVAT YRITYKSET
+        if st.session_state.tracked_companies:
+            for i, item in enumerate(st.session_state.tracked_companies):
+                
+                # --- LOGIIKKA A: FOLLOW-UP (14 PÄIVÄÄ) ---
+                days_since_applied = calculate_days_diff(item.get('date', ''))
+                
+                if item['status'] == "Odottaa" and days_since_applied >= 14:
+                    agent_actions_found = True
+                    with st.container():
+                        st.warning(f"⏳ **{item['company']}**: Hakemuksesta on kulunut {days_since_applied} päivää. Hiljaista?")
+                        
+                        col_a, col_b = st.columns([1, 4])
+                        with col_a:
+                            if st.button("📧 Kirjoita viesti", key=f"agent_email_{i}"):
+                                st.session_state[f"show_email_{i}"] = True
+                        
+                        with col_b:
+                            if st.session_state.get(f"show_email_{i}", False):
+                                st.markdown("### 📝 Luonnos:")
+                                
+                                # LOCAL FALLBACK ONLY
+                                contact = item.get('contact_name', 'Rekrytointitiimi')
+                                draft_email = f"""
+Hei {contact},
+
+Toivottavasti viikkone on sujunut hyvin!
+
+Laitoin teille hakemuksen {item['role']} -tehtävään {item['date']} ({days_since_applied} päivää sitten). 
+Olen edelleen erittäin kiinnostunut mahdollisuudesta liittyä {item['company']}:n tiimiin ja halusin tiedustella, missä vaiheessa rekrytointiprosessi etenee?
+
+Vastaan mielelläni mahdollisiin lisäkysymyksiin.
+
+Ystävällisin terveisin,
+{USER_NAME}
+"""
+                                st.text_area("Kopioi tästä:", value=draft_email, height=200)
+                                if st.button("Sulje", key=f"close_email_{i}"):
+                                    st.session_state[f"show_email_{i}"] = False
+                                    st.rerun()
+
+                # --- LOGIIKKA B: HAASTATTELU PREP (0-2 PÄIVÄÄ) ---
+                if item['status'] == "Haastattelu" and item.get('interview_date'):
+                    days_until = calculate_days_diff(item['interview_date'], is_future=True)
+                    
+                    if 0 <= days_until <= 2:
+                        agent_actions_found = True
+                        with st.container():
+                            st.error(f"🔥 **{item['company']}**: Haastattelu {days_until} pv päästä! Valmistaudutaanko?")
+                            
+                            col_c, col_d = st.columns([1, 4])
+                            with col_c:
+                                if st.button("🧠 Luo muistilista", key=f"agent_prep_{i}"):
+                                    st.session_state[f"show_prep_{i}"] = True
+                            
+                            with col_d:
+                                if st.session_state.get(f"show_prep_{i}", False):
+                                    st.markdown("### 📋 Prep-lista:")
+                                    prep_text = f"""
+1. **Tutustu yrityksen viimeisimpiin uutisiin** (LinkedIn, Verkkosivut).
+2. **Kertaa hakemuksesi:** Mitä lupasit osaavasi?
+3. **Valmistele kysymyksiä heille:** Esim. "Miltä tyypillinen työpäivä näyttää?"
+4. **Pitch:** Harjoittele 2 minuutin hissipuhe itsestäsi.
+                                    """
+                                    st.markdown(prep_text)
+                                    if st.button("Sulje", key=f"close_prep_{i}"):
+                                        st.session_state[f"show_prep_{i}"] = False
+                                        st.rerun()
+
+        if not agent_actions_found:
+            st.success("✅ Kaikki ajan tasalla. Ei akuutteja toimenpiteitä.")
 
     # --- TAB 7: TYÖMARKKINATORI ---
     with tab7:
@@ -652,7 +790,6 @@ def main():
 
         with c2:
             st.subheader("🎓 Koulutus")
-            # KORJATTU: Koulutussanat ja osatutkinnot eriytetty tähän
             training_topics = {
                 "Kaikki aiheet": "media viestintä", 
                 "Viestintä": "viestintä", 
@@ -684,7 +821,6 @@ def main():
             c1, c2 = st.columns([2, 1])
             with c1: 
                 st.subheader("📊 Top Vierailijat")
-                # KORJATTU: Käytetään normaalia if-lausetta ternaryn sijaan, jotta vältetään "Magic print" -ongelma
                 if len(cols) > 2:
                     st.bar_chart(df_visitors[col_company].value_counts().head(7), color="#4DA6FF")
             with c2: st.subheader("📋 Lokitiedot"); st.dataframe(df_visitors.iloc[::-1], use_container_width=True, height=300)
