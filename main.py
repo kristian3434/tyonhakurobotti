@@ -12,12 +12,10 @@ import subprocess
 import re
 from collections import Counter
 
-# Huom: Poistettu aktiivinen riippuvuus google.generativeai -kirjastosta,
-# mutta import jätetty varalle, jos ympäristössä on riippuvuuksia.
-try:
-    import google.generativeai as genai
-except ImportError:
-    pass
+# ---------------------------------------------------------
+# 0. KONFIGURAATIO (Tämän on oltava ensimmäinen st-komento)
+# ---------------------------------------------------------
+st.set_page_config(layout="wide", page_title="Mission Jobs Hub", page_icon="🚀")
 
 # ---------------------------------------------------------
 # AUTOMAATTINEN PÄIVITYSLOGIIKKA
@@ -36,16 +34,12 @@ now = datetime.datetime.now()
 weekday = now.weekday()
 hour = now.hour
 
+# Ajetaan päivitys arkisin klo 8 tai klo 11, jos ei ole vielä ajettu
 if 0 <= weekday <= 4 and hour == 8:
     run_update()
 elif 0 <= weekday <= 4 and hour == 11:
     if not os.path.exists(LOG_FILE):
         run_update()
-
-# ---------------------------------------------------------
-# 0. KONFIGURAATIO
-# ---------------------------------------------------------
-st.set_page_config(layout="wide", page_title="Mission Jobs Hub", page_icon="🚀")
 
 if os.path.exists(LOG_FILE):
     last_update = datetime.datetime.fromtimestamp(os.path.getmtime(LOG_FILE))
@@ -85,7 +79,6 @@ def load_visitor_data():
         df = pd.read_csv(url)
         return df
     except Exception as e:
-        st.error(f"Datan haku epäonnistui: {e}")
         return None
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -99,7 +92,7 @@ def validate_link(url):
     except:
         return False
 
-# --- UUSI FUNKTIO: AIKAEROT ---
+# --- AIKAEROT ---
 def calculate_days_diff(date_str, is_future=False):
     """Laskee päivien erotuksen nykyhetkeen."""
     if not date_str: return 0
@@ -118,11 +111,7 @@ def calculate_days_diff(date_str, is_future=False):
     except:
         return 0
 
-# --- HYBRID INTELLIGENCE ENGINE (LOCAL ONLY MODE) ---
-
-AI_LOGIC_CORE = {
-    "Local Core":  {"provider": "Internal", "status": "Active", "role": "Primary"},
-}
+# --- LOCAL INTELLIGENCE ENGINE ---
 
 def local_text_analysis(text):
     """Analysoi tekstin sisäisellä logiikalla."""
@@ -151,7 +140,7 @@ def local_text_analysis(text):
     return found_stats, final_score, missing_words
 
 def generate_template_application(company, role, job_text, user_background):
-    """Luo älykkään hakemuspohjan."""
+    """Luo älykkään hakemuspohjan ilman APIa."""
     date_str = datetime.datetime.now().strftime("%d.%m.%Y")
     highlights = []
     if "ai" in job_text.lower(): highlights.append("tekoälyosaamiseni")
@@ -254,6 +243,13 @@ AI_STUDIES = [
         "url": "https://www.elementsofai.com/fi",
         "desc": "Suomalainen klassikko. Pakollinen pohjatieto kaikille alalla toimiville.",
         "type": "MOOC / ETÄ"
+    },
+    {
+        "name": "HY Avoin: Tekoäly & Data",
+        "provider": "Helsingin Yliopisto",
+        "url": "https://www.helsinki.fi/fi/hakeminen-ja-opetus/etsi-koulutuksia-ja-kursseja?s_format=mooc%2Cdistance_or_online_teaching&s_itg=open_university&s_q=ai",
+        "desc": "Helsingin yliopiston avoimet tekoälykurssit. MOOC-toteutuksia ja etäopintoja joustavasti.",
+        "type": "YLIOPISTO / MOOC"
     },
     {
         "name": "FiTech - Tekoäly (Koko Suomi)",
@@ -476,18 +472,11 @@ def main():
     if 'tracked_companies' not in st.session_state: st.session_state.tracked_companies = load_local_data()
     if 'edit_states' not in st.session_state: st.session_state.edit_states = {}
     if 'dismissed_suggestions' not in st.session_state: st.session_state.dismissed_suggestions = []
-    
-    # Pakotetaan API tyhjäksi, varmuuden vuoksi
-    st.session_state.api_key = ""
 
     with st.sidebar:
         st.title("⚙️ Asetukset")
         st.header("🧠 Äly")
-        
-        # Vain Local Mode käytössä
-        selected_ai_core = st.radio("Malli:", ["Local Core"], index=0)
-        
-        st.info("ℹ️ Local Mode: Sovellus toimii itsenäisesti sisäisellä logiikalla. Ulkoinen tekoäly on poistettu käytöstä.")
+        st.info("Logiikka: Local (Sisäinen)")
 
         st.markdown("---")
         toggle_startup = st.toggle("🚀 Start-upit", value=False)
@@ -496,9 +485,8 @@ def main():
             for name, url in STARTUPS_PK.items():
                 if validate_link(url): st.markdown(f"- [{name}]({url})")
 
-    st.title("MISSION JOBS // HUB V68.3 (Local)")
-    status_text = "🟢 ONLINE (LOCAL)"
-    st.markdown(f"**Tila:** {status_text} | **Käyttäjä:** {USER_NAME} | **Core:** {selected_ai_core}")
+    st.title("MISSION JOBS // HUB V68.4 (Local Edition)")
+    st.markdown(f"**Tila:** 🟡 LOCAL MODE | **Käyttäjä:** {USER_NAME}")
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "✨ HAKEMUS", "📊 ANALYSOI", "🏢 LINKIT", "⚡️ TEHOHAKU", 
@@ -519,11 +507,10 @@ def main():
         
         if st.button("🚀 LUO HAKEMUS", type="primary"):
             if job_desc and user_cv:
-                # LOCAL LOGIC ONLY
-                with st.spinner("Luodaan älykästä hakemuspohjaa..."):
+                with st.spinner("Luodaan hakemuspohjaa..."):
                     draft = generate_template_application(company_name if company_name else "[YRITYS]", role_name if role_name else "[ROOLI]", job_desc, user_cv)
                     st.subheader("📄 Hakemuspohja:")
-                    st.info("💡 Tässä on valmis pohja, johon on upotettu avainsanat ja rakenne. Viimeistele tiedot itse.")
+                    st.info("💡 Tässä on älykäs pohja, jonka voit viimeistellä.")
                     st.text_area("", value=draft, height=600)
             else:
                 st.warning("Täytä ainakin ilmoitus ja oma tausta.")
@@ -543,7 +530,6 @@ def main():
             st.progress(min(score/5, 1.0))
 
             if input_desc_analysis:
-                # LOCAL ANALYSIS
                 stats, keyword_score, missing = local_text_analysis(input_desc_analysis)
                 c1, c2 = st.columns(2)
                 with c1:
@@ -553,9 +539,9 @@ def main():
                     if missing:
                         st.write("⚠️ **Harkitse näiden mainitsemista:**")
                         for m in missing[:5]: st.markdown(f"- {m.capitalize()}")
-                    st.info("💡 Tämä on automaattinen avainsana-analyysi.")
+                st.info("💡 Tämä on automaattinen avainsana-analyysi.")
 
-    # --- TAB 3: LINKIT (FULL LIST RESTORED) ---
+    # --- TAB 3: LINKIT ---
     with tab3:
         st.header("🏢 Linkkikirjasto")
         with st.expander("Mainostoimistot", expanded=True):
@@ -586,7 +572,7 @@ def main():
         
         st.markdown(f"""<div class="cta-container"><a href="{generate_linkedin_url_full()}" target="_blank" class="cta-button">👉 LINKEDIN (HELSINKI + CREATIVE)</a></div>""", unsafe_allow_html=True)
 
-    # --- TAB 5: SEURANTA (FULL FEATURES) ---
+    # --- TAB 5: SEURANTA ---
     with tab5:
         st.header("📌 Hakemusten Seuranta")
 
@@ -662,10 +648,10 @@ def main():
                         new_email = st.text_input("Sähköposti", value=item['contact_email'], key=f"ce_{i}", disabled=disabled_status)
                         if new_email != item['contact_email']: item['contact_email'] = new_email; save_local_data(st.session_state.tracked_companies)
 
-    if not st.session_state.tracked_companies:
-        st.info("Seurantalista on tyhjä.")
+        if not st.session_state.tracked_companies:
+            st.info("Seurantalista on tyhjä.")
 
-    # --- TAB 6: AGENTTI (SMART QUOTA - LOCAL ONLY) ---
+    # --- TAB 6: AGENTTI (SMART QUOTA) ---
     with tab6:
         st.header("🕵️ Ura-agentti")
         st.info("Agentti valvoo työnhakuvelvoitetta ja aikatauluja.")
@@ -704,7 +690,6 @@ def main():
 
         agent_actions_found = False
         
-        # LOOPATAAN LÄPI SEURATTAVAT YRITYKSET
         if st.session_state.tracked_companies:
             for i, item in enumerate(st.session_state.tracked_companies):
                 
@@ -725,7 +710,6 @@ def main():
                             if st.session_state.get(f"show_email_{i}", False):
                                 st.markdown("### 📝 Luonnos:")
                                 
-                                # LOCAL FALLBACK ONLY
                                 contact = item.get('contact_name', 'Rekrytointitiimi')
                                 draft_email = f"""
 Hei {contact},
