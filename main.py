@@ -55,6 +55,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 USER_NAME = "Mission Jobs Commander"
 STORAGE_FILE = "local_storage.json"
 SHEET_ID = "12_hQ54nccgljOCbDGPOvFzYBQ6KhQkdk1GDdpaNTGyM"
+KELA_FILE = "kela_storage.json"
 
 def load_local_data():
     if os.path.exists(STORAGE_FILE):
@@ -71,6 +72,22 @@ def save_local_data(data):
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"Virhe tallennuksessa: {e}")
+
+def load_kela_data():
+    if os.path.exists(KELA_FILE):
+        try:
+            with open(KELA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {"last_date": None}
+    return {"last_date": None}
+
+def save_kela_data(data):
+    try:
+        with open(KELA_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"Virhe Kela-datan tallennuksessa: {e}")
 
 @st.cache_data(ttl=60)
 def load_visitor_data():
@@ -94,17 +111,14 @@ def validate_link(url):
 
 # --- AIKAEROT ---
 def calculate_days_diff(date_str, is_future=False):
-    """Laskee päivien erotuksen nykyhetkeen."""
     if not date_str: return 0
     now = datetime.datetime.now()
     try:
-        # Jos kyseessä on haastattelu (YYYY-MM-DD)
         if "-" in str(date_str):
             dt = datetime.datetime.strptime(str(date_str), "%Y-%m-%d")
-            diff = (dt - now).days + 1 # +1 jotta huominen on 1
+            diff = (dt - now).days + 1
             return diff
         
-        # Jos kyseessä on hakemus (dd.mm.)
         full_date = f"{date_str}{now.year}"
         dt = datetime.datetime.strptime(full_date, "%d.%m.%Y")
         return (now - dt).days
@@ -112,9 +126,7 @@ def calculate_days_diff(date_str, is_future=False):
         return 0
 
 # --- LOCAL INTELLIGENCE ENGINE ---
-
 def local_text_analysis(text):
-    """Analysoi tekstin sisäisellä logiikalla."""
     text = text.lower()
     keywords = {
         "Luova": ["photoshop", "illustrator", "indesign", "figma", "video", "editointi", "visuaalinen", "brändi", "sommittelu", "creative", "art director"],
@@ -140,7 +152,6 @@ def local_text_analysis(text):
     return found_stats, final_score, missing_words
 
 def generate_template_application(company, role, job_text, user_background):
-    """Luo älykkään hakemuspohjan ilman APIa."""
     date_str = datetime.datetime.now().strftime("%d.%m.%Y")
     highlights = []
     if "ai" in job_text.lower(): highlights.append("tekoälyosaamiseni")
@@ -223,83 +234,18 @@ def safe_deadline_block(date_input, is_future_event=False):
 # --- DATASETS ---
 
 AI_STUDIES = [
-    {
-        "name": "Generative AI Learning Path",
-        "provider": "Google Cloud",
-        "url": "https://www.cloudskillsboost.google/paths/118",
-        "desc": "Googlen virallinen ja ilmainen polku generatiivisen tekoälyn syvälliseen ymmärtämiseen.",
-        "type": "SERTIFIKAATTI"
-    },
-    {
-        "name": "Opin.fi: Tekoäly & Luova osaaminen",
-        "provider": "Suomen Korkeakoulut (Digivisio)",
-        "url": "https://opin.fi/fi/search?q=teko%C3%A4ly",
-        "desc": "Kokoava haku. Kriteerit: Laskennallinen luovuus, XR, Visual Culture, Palvelumuotoilu & AI.",
-        "type": "HAKUPALVELU"
-    },
-    {
-        "name": "Elements of AI",
-        "provider": "Helsingin Yliopisto & Reaktor",
-        "url": "https://www.elementsofai.com/fi",
-        "desc": "Suomalainen klassikko. Pakollinen pohjatieto kaikille alalla toimiville.",
-        "type": "MOOC / ETÄ"
-    },
-    {
-        "name": "HY Avoin: Tekoäly & Data",
-        "provider": "Helsingin Yliopisto",
-        "url": "https://www.helsinki.fi/fi/hakeminen-ja-opetus/etsi-koulutuksia-ja-kursseja?s_format=mooc%2Cdistance_or_online_teaching&s_itg=open_university&s_q=ai",
-        "desc": "Helsingin yliopiston avoimet tekoälykurssit. MOOC-toteutuksia ja etäopintoja joustavasti.",
-        "type": "YLIOPISTO / MOOC"
-    },
-    {
-        "name": "FiTech - Tekoäly (Koko Suomi)",
-        "provider": "Yliopistoverkosto (Aalto ym.)",
-        "url": "https://fitech.io/fi/opinnot/?s=teko%C3%A4ly",
-        "desc": "Suomen laajin ilmainen tekniikan tarjonta. Etäopintoja Aallosta, LUTista ja Oulusta.",
-        "type": "YLIOPISTO / ETÄ"
-    },
-    {
-        "name": "Aalto Avoin: Art & Media",
-        "provider": "Aalto Arts",
-        "url": "https://www.aalto.fi/fi/taiteiden-ja-suunnittelun-korkeakoulu",
-        "desc": "Seuraa Aalto Artsin avoimia kursseja. Usein AI- ja mediayhteyksiä.",
-        "type": "YLIOPISTO (HKI)"
-    },
-    {
-        "name": "3AMK (AI & Future)",
-        "provider": "Metropolia, Haaga-Helia, Laurea",
-        "url": "https://www.3amk.fi/",
-        "desc": "Pääkaupunkiseudun korkeakoulujen yhteiset tulevaisuuskurssit.",
-        "type": "AMK (HKI)"
-    },
-    {
-        "name": "DeepLearning.AI: AI for Everyone",
-        "provider": "DeepLearning.AI",
-        "url": "https://www.deeplearning.ai/courses/ai-for-everyone/",
-        "desc": "Andrew Ng:n kurssi bisnespuolelle ja tuottajille. Ei vaadi koodausta.",
-        "type": "KV / ETÄ"
-    }
+    {"name": "Generative AI Learning Path", "provider": "Google Cloud", "url": "https://www.cloudskillsboost.google/paths/118", "desc": "Googlen virallinen ja ilmainen polku generatiivisen tekoälyn syvälliseen ymmärtämiseen.", "type": "SERTIFIKAATTI"},
+    {"name": "Opin.fi: Tekoäly & Luova osaaminen", "provider": "Suomen Korkeakoulut (Digivisio)", "url": "https://opin.fi/fi/search?q=teko%C3%A4ly", "desc": "Kokoava haku. Kriteerit: Laskennallinen luovuus, XR, Visual Culture, Palvelumuotoilu & AI.", "type": "HAKUPALVELU"},
+    {"name": "Elements of AI", "provider": "Helsingin Yliopisto & Reaktor", "url": "https://www.elementsofai.com/fi", "desc": "Suomalainen klassikko. Pakollinen pohjatieto kaikille alalla toimiville.", "type": "MOOC / ETÄ"},
+    {"name": "HY Avoin: Tekoäly & Data", "provider": "Helsingin Yliopisto", "url": "https://www.helsinki.fi/fi/hakeminen-ja-opetus/etsi-koulutuksia-ja-kursseja?s_format=mooc%2Cdistance_or_online_teaching&s_itg=open_university&s_q=ai", "desc": "Helsingin yliopiston avoimet tekoälykurssit. MOOC-toteutuksia ja etäopintoja joustavasti.", "type": "YLIOPISTO / MOOC"},
+    {"name": "FiTech - Tekoäly (Koko Suomi)", "provider": "Yliopistoverkosto (Aalto ym.)", "url": "https://fitech.io/fi/opinnot/?s=teko%C3%A4ly", "desc": "Suomen laajin ilmainen tekniikan tarjonta. Etäopintoja Aallosta, LUTista ja Oulusta.", "type": "YLIOPISTO / ETÄ"},
+    {"name": "Aalto Avoin: Art & Media", "provider": "Aalto Arts", "url": "https://www.aalto.fi/fi/taiteiden-ja-suunnittelun-korkeakoulu", "desc": "Seuraa Aalto Artsin avoimia kursseja. Usein AI- ja mediayhteyksiä.", "type": "YLIOPISTO (HKI)"},
+    {"name": "3AMK (AI & Future)", "provider": "Metropolia, Haaga-Helia, Laurea", "url": "https://www.3amk.fi/", "desc": "Pääkaupunkiseudun korkeakoulujen yhteiset tulevaisuuskurssit.", "type": "AMK (HKI)"},
+    {"name": "DeepLearning.AI: AI for Everyone", "provider": "DeepLearning.AI", "url": "https://www.deeplearning.ai/courses/ai-for-everyone/", "desc": "Andrew Ng:n kurssi bisnespuolelle ja tuottajille. Ei vaadi koodausta.", "type": "KV / ETÄ"}
 ]
 
-UNI_KEYWORDS = [
-    "laskennallinen luovuus",
-    "computational creativity",
-    "human-computer interaction",
-    "digital humanities",
-    "visual culture",
-    "mikrotutkinto",
-    "tekoäly viestinnässä"
-]
-
-AMK_KEYWORDS = [
-    "palvelumuotoilu",
-    "erikoistumiskoulutus",
-    "osaajakoulutus",
-    "mediatuotanto",
-    "visuaalinen suunnittelu",
-    "XR",
-    "virtuaalituotanto"
-]
+UNI_KEYWORDS = ["laskennallinen luovuus", "computational creativity", "human-computer interaction", "digital humanities", "visual culture", "mikrotutkinto", "tekoäly viestinnässä"]
+AMK_KEYWORDS = ["palvelumuotoilu", "erikoistumiskoulutus", "osaajakoulutus", "mediatuotanto", "visuaalinen suunnittelu", "XR", "virtuaalituotanto"]
 
 AGENCIES = {
     "Avidly": "https://www.avidlyagency.com/fi/ura-avidlylla",
@@ -318,78 +264,18 @@ AGENCIES = {
 }
 
 SCHOOLS_DATA = [
-    {
-        "name": "Aalto-yliopisto (Taiteet & Suunnittelu)", 
-        "url": "https://www.aalto.fi/fi/taiteiden-ja-suunnittelun-korkeakoulu", 
-        "logo": "https://www.aalto.fi/themes/custom/aalto/logo.svg",
-        "status": "⭐ HUIPPU"
-    },
-    {
-        "name": "HEO Kansanopisto (Graafinen & Kuvallinen)", 
-        "url": "https://www.heo.fi/kulttuuri-ja-taide/", 
-        "logo": "https://www.heo.fi/wp-content/themes/heo/images/logo.png",
-        "status": "Portfolio"
-    },
-    {
-        "name": "Metropolia AMK (Viestintä & Muotoilu)", 
-        "url": "https://www.metropolia.fi/fi/opiskelu/amk-tutkinnot/viestinta", 
-        "logo": "https://www.metropolia.fi/themes/custom/metropolia/logo.svg",
-        "status": "AMK / Haku"
-    },
-    {
-        "name": "Haaga-Helia (Journalismi & Digi)", 
-        "url": "https://www.haaga-helia.fi/fi/koulutus/media-ja-viestinta", 
-        "logo": "https://www.haaga-helia.fi/themes/custom/hh/logo.svg",
-        "status": "AMK / Haku"
-    },
-    {
-        "name": "Humak (Kulttuurituottaja)", 
-        "url": "https://www.humak.fi/koulutus/kulttuurituottaja/", 
-        "logo": "https://www.humak.fi/wp-content/themes/humak/images/logo.svg",
-        "status": "AMK / Tuottaja"
-    },
-    {
-        "name": "Taitotalo (Media-alan PT)", 
-        "url": "https://www.taitotalo.fi/koulutus/media-alan-ja-kuvallisen-ilmaisun-perustutkinto", 
-        "logo": "https://www.taitotalo.fi/themes/custom/taitotalo/logo.svg",
-        "status": "Ammatillinen"
-    },
-    {
-        "name": "Stadin AO (Media & Kuvallinen)", 
-        "url": "https://stadinao.fi/koulutustarjonta/media-alan-ja-kuvallisen-ilmaisun-perustutkinto/", 
-        "logo": "https://stadinao.fi/wp-content/themes/stadinao/assets/images/logo.svg",
-        "status": "Jatkuva haku"
-    },
-    {
-        "name": "Varia (Media-ala)", 
-        "url": "https://www.vantaa.fi/fi/palveluhakemisto/palvelu/media-alan-ja-kuvallisen-ilmaisun-perustutkinto-varia", 
-        "logo": "https://www.vantaa.fi/themes/custom/vantaa/logo.svg",
-        "status": "Vantaa"
-    },
-    {
-        "name": "Omnia (Media)", 
-        "url": "https://www.omnia.fi/koulutushaku/media-alan-ja-kuvallisen-ilmaisun-perustutkinto", 
-        "logo": "https://www.omnia.fi/themes/custom/omnia/logo.svg",
-        "status": "Espoo"
-    },
-    {
-        "name": "Business College Helsinki (Digi)", 
-        "url": "https://bc.fi/koulutukset/tieto-ja-viestintatekniikan-perustutkinto/", 
-        "logo": "https://bc.fi/wp-content/themes/bch/images/logo.svg",
-        "status": "Helsinki"
-    },
-    {
-        "name": "Rastor-instituutti (Markkinointi)", 
-        "url": "https://www.rastorinst.fi/koulutus/markkinointi-ja-viestinta", 
-        "logo": "https://www.rastorinst.fi/themes/custom/rastor/logo.svg",
-        "status": "Aikuis"
-    },
-    {
-        "name": "Careeria (Media)", 
-        "url": "https://careeria.fi/koulutus/media-alan-ja-kuvallisen-ilmaisun-perustutkinto/", 
-        "logo": "https://careeria.fi/wp-content/themes/careeria/assets/images/logo.svg",
-        "status": "Hki/Vantaa"
-    }
+    {"name": "Aalto-yliopisto (Taiteet & Suunnittelu)", "url": "https://www.aalto.fi/fi/taiteiden-ja-suunnittelun-korkeakoulu", "logo": "https://www.aalto.fi/themes/custom/aalto/logo.svg", "status": "⭐ HUIPPU"},
+    {"name": "HEO Kansanopisto (Graafinen & Kuvallinen)", "url": "https://www.heo.fi/kulttuuri-ja-taide/", "logo": "https://www.heo.fi/wp-content/themes/heo/images/logo.png", "status": "Portfolio"},
+    {"name": "Metropolia AMK (Viestintä & Muotoilu)", "url": "https://www.metropolia.fi/fi/opiskelu/amk-tutkinnot/viestinta", "logo": "https://www.metropolia.fi/themes/custom/metropolia/logo.svg", "status": "AMK / Haku"},
+    {"name": "Haaga-Helia (Journalismi & Digi)", "url": "https://www.haaga-helia.fi/fi/koulutus/media-ja-viestinta", "logo": "https://www.haaga-helia.fi/themes/custom/hh/logo.svg", "status": "AMK / Haku"},
+    {"name": "Humak (Kulttuurituottaja)", "url": "https://www.humak.fi/koulutus/kulttuurituottaja/", "logo": "https://www.humak.fi/wp-content/themes/humak/images/logo.svg", "status": "AMK / Tuottaja"},
+    {"name": "Taitotalo (Media-alan PT)", "url": "https://www.taitotalo.fi/koulutus/media-alan-ja-kuvallisen-ilmaisun-perustutkinto", "logo": "https://www.taitotalo.fi/themes/custom/taitotalo/logo.svg", "status": "Ammatillinen"},
+    {"name": "Stadin AO (Media & Kuvallinen)", "url": "https://stadinao.fi/koulutustarjonta/media-alan-ja-kuvallisen-ilmaisun-perustutkinto/", "logo": "https://stadinao.fi/wp-content/themes/stadinao/assets/images/logo.svg", "status": "Jatkuva haku"},
+    {"name": "Varia (Media-ala)", "url": "https://www.vantaa.fi/fi/palveluhakemisto/palvelu/media-alan-ja-kuvallisen-ilmaisun-perustutkinto-varia", "logo": "https://www.vantaa.fi/themes/custom/vantaa/logo.svg", "status": "Vantaa"},
+    {"name": "Omnia (Media)", "url": "https://www.omnia.fi/koulutushaku/media-alan-ja-kuvallisen-ilmaisun-perustutkinto", "logo": "https://www.omnia.fi/themes/custom/omnia/logo.svg", "status": "Espoo"},
+    {"name": "Business College Helsinki (Digi)", "url": "https://bc.fi/koulutukset/tieto-ja-viestintatekniikan-perustutkinto/", "logo": "https://bc.fi/wp-content/themes/bch/images/logo.svg", "status": "Helsinki"},
+    {"name": "Rastor-instituutti (Markkinointi)", "url": "https://www.rastorinst.fi/koulutus/markkinointi-ja-viestinta", "logo": "https://www.rastorinst.fi/themes/custom/rastor/logo.svg", "status": "Aikuis"},
+    {"name": "Careeria (Media)", "url": "https://careeria.fi/koulutus/media-alan-ja-kuvallisen-ilmaisun-perustutkinto/", "logo": "https://careeria.fi/wp-content/themes/careeria/assets/images/logo.svg", "status": "Hki/Vantaa"}
 ]
 
 STARTUPS_PK = {
@@ -401,40 +287,13 @@ STARTUPS_PK = {
     "Wolt Careers": "https://careers.wolt.com/en"
 }
 
-TARGET_ROLES = [
-    "Graafinen suunnittelija", "Sisällöntuottaja", "Visuaalinen suunnittelija",
-    "Projektipäällikkö (luovat sisällöt)", "Viestintäsuunnittelija", "Markkinointisuunnittelija",
-    "UI/UX-suunnittelija", "Creative Producer", "Content Manager", "Art Director Assistant",
-    "Junior Designer", "Video Editor"
-]
-
-SEARCH_KEYWORDS = [
-    "graafinen suunnittelija", "sisällöntuottaja", "visuaalinen suunnittelija",
-    "projektipäällikkö", "viestintäsuunnittelija", "markkinointisuunnittelija",
-    "UI designer", "UX designer", "creative producer", "content manager", 
-    "mainonta", "luova ala", "graafinen suunnittelu", "digitaalinen viestintä",
-    "ICT"
-]
-
+TARGET_ROLES = ["Graafinen suunnittelija", "Sisällöntuottaja", "Visuaalinen suunnittelija", "Projektipäällikkö (luovat sisällöt)", "Viestintäsuunnittelija", "Markkinointisuunnittelija", "UI/UX-suunnittelija", "Creative Producer", "Content Manager", "Art Director Assistant", "Junior Designer", "Video Editor"]
+SEARCH_KEYWORDS = ["graafinen suunnittelija", "sisällöntuottaja", "visuaalinen suunnittelija", "projektipäällikkö", "viestintäsuunnittelija", "markkinointisuunnittelija", "UI designer", "UX designer", "creative producer", "content manager", "mainonta", "luova ala", "graafinen suunnittelu", "digitaalinen viestintä", "ICT"]
 FUTURE_MAKER_LINK = "https://janmyllymaki.wixsite.com/future-maker/fi"
 
-SITES_INTL = {
-    "Behance Jobs": "https://www.behance.net/joblist",
-    "Design Jobs Board": "https://www.designjobsboard.com/",
-    "Krop": "https://www.krop.com/"
-}
-
-SITES_FI_NORDIC = {
-    "Journalistiliitto (Etusivu)": "https://journalistiliitto.fi/",
-    "Kuntarekry (Kulttuuri)": "https://www.kuntarekry.fi/fi/tyopaikat/kulttuuri-ja-museoala/",
-    "Medialiitto (Työpaikat)": "https://www.medialiitto.fi/medialiitto/tyopaikat/",
-    "TAKU ry": "https://taku.fi/avainsana/tyopaikat/"
-}
-
-SITES_MEDIA = {
-    "Media Match": "https://www.media-match.com/",
-    "ProductionHUB": "https://www.productionhub.com/jobs"
-}
+SITES_INTL = {"Behance Jobs": "https://www.behance.net/joblist", "Design Jobs Board": "https://www.designjobsboard.com/", "Krop": "https://www.krop.com/"}
+SITES_FI_NORDIC = {"Journalistiliitto (Etusivu)": "https://journalistiliitto.fi/", "Kuntarekry (Kulttuuri)": "https://www.kuntarekry.fi/fi/tyopaikat/kulttuuri-ja-museoala/", "Medialiitto (Työpaikat)": "https://www.medialiitto.fi/medialiitto/tyopaikat/", "TAKU ry": "https://taku.fi/avainsana/tyopaikat/"}
+SITES_MEDIA = {"Media Match": "https://www.media-match.com/", "ProductionHUB": "https://www.productionhub.com/jobs"}
 
 # ---------------------------------------------------------
 # UI & LOGIIKKA
@@ -472,21 +331,20 @@ def main():
     if 'tracked_companies' not in st.session_state: st.session_state.tracked_companies = load_local_data()
     if 'edit_states' not in st.session_state: st.session_state.edit_states = {}
     if 'dismissed_suggestions' not in st.session_state: st.session_state.dismissed_suggestions = []
+    if 'kela_data' not in st.session_state: st.session_state.kela_data = load_kela_data()
 
     with st.sidebar:
         st.title("⚙️ Asetukset")
-        st.header("🧠 Äly")
-        st.info("Logiikka: Local (Sisäinen)")
-
-        st.markdown("---")
+        st.header("🗂️ Kokoelmat")
+        
         toggle_startup = st.toggle("🚀 Start-upit", value=False)
         if toggle_startup:
             st.markdown("### Hubit")
             for name, url in STARTUPS_PK.items():
                 if validate_link(url): st.markdown(f"- [{name}]({url})")
 
-    st.title("MISSION JOBS // HUB V68.4 (Local Edition)")
-    st.markdown(f"**Tila:** 🟡 LOCAL MODE | **Käyttäjä:** {USER_NAME}")
+    st.title("MISSION JOBS // HUB V68.5 (Local Smart Quota + Kela Agent)")
+    st.markdown(f"**Tila:** 🟢 LOCAL MODE | **Käyttäjä:** {USER_NAME}")
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "✨ HAKEMUS", "📊 ANALYSOI", "🏢 LINKIT", "⚡️ TEHOHAKU", 
@@ -509,7 +367,7 @@ def main():
             if job_desc and user_cv:
                 with st.spinner("Luodaan hakemuspohjaa..."):
                     draft = generate_template_application(company_name if company_name else "[YRITYS]", role_name if role_name else "[ROOLI]", job_desc, user_cv)
-                    st.subheader("📄 Hakemuspohja:")
+                    st.subheader("📄 Hakemuspohja (Local Mode):")
                     st.info("💡 Tässä on älykäs pohja, jonka voit viimeistellä.")
                     st.text_area("", value=draft, height=600)
             else:
@@ -524,7 +382,6 @@ def main():
         input_desc_analysis = st.text_area("Liitä ilmoitusteksti tähän analyysiä varten:", height=200)
         
         if st.button("🔍 ANALYSOI TEKSTI"):
-            # Pisteytys (Aina toiminnassa)
             score = calculate_score(input_title, input_loc, input_desc_analysis)
             st.subheader(f"Match Score: {score}/5.0")
             st.progress(min(score/5, 1.0))
@@ -539,7 +396,7 @@ def main():
                     if missing:
                         st.write("⚠️ **Harkitse näiden mainitsemista:**")
                         for m in missing[:5]: st.markdown(f"- {m.capitalize()}")
-                st.info("💡 Tämä on automaattinen avainsana-analyysi.")
+                st.info("💡 Tämä on automaattinen paikallinen avainsana-analyysi.")
 
     # --- TAB 3: LINKIT ---
     with tab3:
@@ -651,11 +508,48 @@ def main():
         if not st.session_state.tracked_companies:
             st.info("Seurantalista on tyhjä.")
 
-    # --- TAB 6: AGENTTI (SMART QUOTA) ---
+    # --- TAB 6: AGENTTI (SMART QUOTA + KELA) ---
     with tab6:
         st.header("🕵️ Ura-agentti")
-        st.info("Agentti valvoo työnhakuvelvoitetta ja aikatauluja.")
+        st.info("Agentti valvoo työnhakuvelvoitetta, aikatauluja ja Kela-ilmoituksia.")
         
+        # --- KELA AGENTTI ---
+        st.subheader("🏦 Kela-ilmoitus (4 viikon jakso)")
+        saved_kela_date = st.session_state.kela_data.get("last_date")
+        
+        default_kela = datetime.datetime.strptime(saved_kela_date, "%Y-%m-%d").date() if saved_kela_date else datetime.date.today()
+        
+        k1, k2 = st.columns([2, 1])
+        with k1:
+            input_kela_date = st.date_input("Milloin palautit edellisen työttömyysajan ilmoituksen?", value=default_kela)
+        with k2:
+            st.write("")
+            st.write("")
+            if st.button("💾 Tallenna päivä"):
+                st.session_state.kela_data["last_date"] = str(input_kela_date)
+                save_kela_data(st.session_state.kela_data)
+                st.success("Tallennettu!")
+                st.rerun()
+
+        if saved_kela_date:
+            last_date_obj = datetime.datetime.strptime(saved_kela_date, "%Y-%m-%d").date()
+            next_date_obj = last_date_obj + datetime.timedelta(days=28)
+            days_to_kela = (next_date_obj - datetime.date.today()).days
+            
+            st.markdown(f"**Seuraava ilmoituspäivä:** {next_date_obj.strftime('%d.%m.%Y')}")
+            
+            if days_to_kela < 0:
+                st.error(f"🔴 HUOMIO! Ilmoituksen palautuspäivä oli {abs(days_to_kela)} päivää sitten. Palauta heti, jos et ole jo tehnyt!")
+            elif days_to_kela == 0:
+                st.error("🔥 TÄNÄÄN ON KELA-ILMOITUKSEN PALAUTUSPÄIVÄ! 🔥")
+                st.markdown("[👉 Siirry Oma Kelaan](https://www.kela.fi/asiointi)")
+            elif days_to_kela <= 5:
+                st.warning(f"⏳ Valmistaudu: Kela-ilmoitus on palautettava {days_to_kela} päivän kuluttua.")
+            else:
+                st.success(f"✅ Kaikki hyvin. Seuraavaan Kela-ilmoitukseen on aikaa {days_to_kela} päivää.")
+        
+        st.divider()
+
         # --- VELVOITELASKURI ---
         MONTHLY_QUOTA = 4
         current_month = datetime.datetime.now().month
@@ -709,12 +603,11 @@ def main():
                         with col_b:
                             if st.session_state.get(f"show_email_{i}", False):
                                 st.markdown("### 📝 Luonnos:")
-                                
                                 contact = item.get('contact_name', 'Rekrytointitiimi')
                                 draft_email = f"""
 Hei {contact},
 
-Toivottavasti viikkone on sujunut hyvin!
+Toivottavasti viikkonne on sujunut hyvin!
 
 Laitoin teille hakemuksen {item['role']} -tehtävään {item['date']} ({days_since_applied} päivää sitten). 
 Olen edelleen erittäin kiinnostunut mahdollisuudesta liittyä {item['company']}:n tiimiin ja halusin tiedustella, missä vaiheessa rekrytointiprosessi etenee?
@@ -758,7 +651,7 @@ Ystävällisin terveisin,
                                         st.rerun()
 
         if not agent_actions_found:
-            st.success("✅ Kaikki ajan tasalla. Ei akuutteja toimenpiteitä.")
+            st.success("✅ Kaikki ajan tasalla. Ei akuutteja toimenpiteitä työnhakujen osalta.")
 
     # --- TAB 7: TYÖMARKKINATORI ---
     with tab7:
