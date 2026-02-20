@@ -55,7 +55,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 USER_NAME = "Mission Jobs Commander"
 STORAGE_FILE = "local_storage.json"
 SHEET_ID = "12_hQ54nccgljOCbDGPOvFzYBQ6KhQkdk1GDdpaNTGyM"
-KELA_FILE = "kela_storage.json"
+KELA_FILE = "kela_storage.json" 
 
 def load_local_data():
     if os.path.exists(STORAGE_FILE):
@@ -109,6 +109,34 @@ def validate_link(url):
     except:
         return False
 
+# --- SÄÄNTÖPOHJAINEN KOULUTUSTUTKA (Yhteishaku & Media-filtteri) ---
+@st.cache_data(ttl=3600, show_spinner=False)
+def check_school_application_status(url):
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            html_content = response.text.lower()
+            
+            # 1. Yhteishaku-filtteri
+            if "yhteishaku" in html_content:
+                haku_keywords = ["jatkuva haku"]
+            else:
+                haku_keywords = ["jatkuva haku", "haku käynnissä", "hae tähän koulutukseen", "ilmoittaudu nyt"]
+                
+            # 2. Media-filtteri: Varmistetaan, että sivu puhuu luovasta alasta
+            media_keywords = ["media-ala", "graafin", "visuaali", "sisällöntuotta", "audiovisuaali", "julkaisutuotanto"]
+            
+            found_haku = [kw for kw in haku_keywords if kw in html_content]
+            found_media = [kw for kw in media_keywords if kw in html_content]
+            
+            # Hälytetään VAIN, jos haku on auki JA jokin media/luovan alan sana löytyy
+            if found_haku and found_media:
+                return found_haku
+        return []
+    except:
+        return []
+
 # --- AIKAEROT ---
 def calculate_days_diff(date_str, is_future=False):
     if not date_str: return 0
@@ -125,7 +153,12 @@ def calculate_days_diff(date_str, is_future=False):
     except:
         return 0
 
-# --- LOCAL INTELLIGENCE ENGINE ---
+# --- HYBRID INTELLIGENCE ENGINE (LOCAL ONLY) ---
+
+AI_LOGIC_CORE = {
+    "Local Engine": {"provider": "Paikallinen", "status": "Simuloitu", "role": "Primary"},
+}
+
 def local_text_analysis(text):
     text = text.lower()
     keywords = {
@@ -269,7 +302,7 @@ SCHOOLS_DATA = [
     {"name": "Metropolia AMK (Viestintä & Muotoilu)", "url": "https://www.metropolia.fi/fi/opiskelu/amk-tutkinnot/viestinta", "logo": "https://www.metropolia.fi/themes/custom/metropolia/logo.svg", "status": "AMK / Haku"},
     {"name": "Haaga-Helia (Journalismi & Digi)", "url": "https://www.haaga-helia.fi/fi/koulutus/media-ja-viestinta", "logo": "https://www.haaga-helia.fi/themes/custom/hh/logo.svg", "status": "AMK / Haku"},
     {"name": "Humak (Kulttuurituottaja)", "url": "https://www.humak.fi/koulutus/kulttuurituottaja/", "logo": "https://www.humak.fi/wp-content/themes/humak/images/logo.svg", "status": "AMK / Tuottaja"},
-    {"name": "Taitotalo (Media-alan PT)", "url": "https://www.taitotalo.fi/koulutus/media-alan-ja-kuvallisen-ilmaisun-perustutkinto", "logo": "https://www.taitotalo.fi/themes/custom/taitotalo/logo.svg", "status": "Ammatillinen"},
+    {"name": "Taitotalo (ICT- ja Media)", "url": "https://www.taitotalo.fi/koulutukset/ict-ja-media-alan-koulutus", "logo": "https://www.taitotalo.fi/themes/custom/taitotalo/logo.svg", "status": "Koulutustarjonta"},
     {"name": "Stadin AO (Media & Kuvallinen)", "url": "https://stadinao.fi/koulutustarjonta/media-alan-ja-kuvallisen-ilmaisun-perustutkinto/", "logo": "https://stadinao.fi/wp-content/themes/stadinao/assets/images/logo.svg", "status": "Jatkuva haku"},
     {"name": "Varia (Media-ala)", "url": "https://www.vantaa.fi/fi/palveluhakemisto/palvelu/media-alan-ja-kuvallisen-ilmaisun-perustutkinto-varia", "logo": "https://www.vantaa.fi/themes/custom/vantaa/logo.svg", "status": "Vantaa"},
     {"name": "Omnia (Media)", "url": "https://www.omnia.fi/koulutushaku/media-alan-ja-kuvallisen-ilmaisun-perustutkinto", "logo": "https://www.omnia.fi/themes/custom/omnia/logo.svg", "status": "Espoo"},
@@ -335,16 +368,21 @@ def main():
 
     with st.sidebar:
         st.title("⚙️ Asetukset")
-        st.header("🗂️ Kokoelmat")
+        st.header("🧠 Äly")
         
+        selected_ai_core = st.radio("Malli:", list(AI_LOGIC_CORE.keys()), index=0)
+        st.info("ℹ️ API-avain on poistettu käytöstä. Sovellus käyttää paikallista analyysia.")
+
+        st.markdown("---")
         toggle_startup = st.toggle("🚀 Start-upit", value=False)
         if toggle_startup:
             st.markdown("### Hubit")
             for name, url in STARTUPS_PK.items():
                 if validate_link(url): st.markdown(f"- [{name}]({url})")
 
-    st.title("MISSION JOBS // HUB V68.5 (Local Smart Quota + Kela Agent)")
-    st.markdown(f"**Tila:** 🟢 LOCAL MODE | **Käyttäjä:** {USER_NAME}")
+    st.title("MISSION JOBS // HUB V68.7 (Local Mode)")
+    status_text = "🟡 LOCAL MODE"
+    st.markdown(f"**Tila:** {status_text} | **Käyttäjä:** {USER_NAME} | **Core:** {selected_ai_core}")
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "✨ HAKEMUS", "📊 ANALYSOI", "🏢 LINKIT", "⚡️ TEHOHAKU", 
@@ -365,10 +403,10 @@ def main():
         
         if st.button("🚀 LUO HAKEMUS", type="primary"):
             if job_desc and user_cv:
-                with st.spinner("Luodaan hakemuspohjaa..."):
+                with st.spinner("Luodaan hakemuspohjaa ilman tekoälyä..."):
                     draft = generate_template_application(company_name if company_name else "[YRITYS]", role_name if role_name else "[ROOLI]", job_desc, user_cv)
                     st.subheader("📄 Hakemuspohja (Local Mode):")
-                    st.info("💡 Tässä on älykäs pohja, jonka voit viimeistellä.")
+                    st.info("💡 API on poissa käytöstä, joten tässä on älykäs pohja, jonka voit viimeistellä.")
                     st.text_area("", value=draft, height=600)
             else:
                 st.warning("Täytä ainakin ilmoitus ja oma tausta.")
@@ -396,7 +434,7 @@ def main():
                     if missing:
                         st.write("⚠️ **Harkitse näiden mainitsemista:**")
                         for m in missing[:5]: st.markdown(f"- {m.capitalize()}")
-                st.info("💡 Tämä on automaattinen paikallinen avainsana-analyysi.")
+                st.info("💡 Tämä on automaattinen avainsana-analyysi (Local Mode).")
 
     # --- TAB 3: LINKIT ---
     with tab3:
@@ -444,26 +482,26 @@ def main():
 
         with st.expander("➕ Lisää manuaalisesti", expanded=False):
             c1, c2 = st.columns(2)
-            with c1: cn = st.text_input("Yritys")
-            with c2: cr = st.text_input("Rooli")
-            cs = st.selectbox("Tila", ["Odottaa", "Keskustelu", "Haastattelu", "Ei vastausta", "Hylätty"])
+            with c1: cn = st.text_input("Yritys / Oppilaitos")
+            with c2: cr = st.text_input("Rooli / Koulutus")
+            cs = st.selectbox("Tila", ["Odottaa", "Keskustelu", "Haastattelu", "Ei vastausta", "Hylätty", "Soveltuvuuskoe", "Valintapäätös", "Kurssipaikka vahvistettu"])
             interview_date = ""
             interview_time = ""
-            if cs == "Haastattelu":
-                interview_date = st.date_input("Haastattelupäivä", key="int_date")
-                interview_time = st.time_input("Haastattelun kellonaika", key="int_time")
+            if cs in ["Haastattelu", "Soveltuvuuskoe"]:
+                interview_date = st.date_input("Päivämäärä", key="int_date")
+                interview_time = st.time_input("Kellonaika", key="int_time")
 
             if st.button("Tallenna", type="primary") and cn:
                 new_item = {
                     "company": cn, "role": cr, "status": cs,
                     "date": datetime.datetime.now().strftime("%d.%m."),
                     "contact_name": "", "contact_phone": "", "contact_email": "",
-                    "interview_date": str(interview_date) if cs == "Haastattelu" else "",
-                    "interview_time": str(interview_time) if cs == "Haastattelu" else ""
+                    "interview_date": str(interview_date) if cs in ["Haastattelu", "Soveltuvuuskoe"] else "",
+                    "interview_time": str(interview_time) if cs in ["Haastattelu", "Soveltuvuuskoe"] else ""
                 }
                 st.session_state.tracked_companies.append(new_item)
                 save_local_data(st.session_state.tracked_companies)
-                st.success("✅ Hakemus tallennettu!")
+                st.success("✅ Tallennettu!")
                 st.rerun()
 
         for i, item in enumerate(st.session_state.tracked_companies):
@@ -472,7 +510,7 @@ def main():
                     if k not in item: item[k] = ""
 
                 time_badge = safe_deadline_block(item.get('date', ''))
-                status_color = STATUS_COLORS.get(item['status'], {"bg": "#FFFFFF", "text": "#000000"})
+                status_color = STATUS_COLORS.get(item['status'], {"bg": "#E2E3E5", "text": "#333333"})
                 
                 c1, c2, c3 = st.columns([3, 2, 1])
                 with c1: st.markdown(f"**{item['company']}** ({item['role']})")
@@ -483,9 +521,9 @@ def main():
                         save_local_data(st.session_state.tracked_companies)
                         st.rerun()
 
-                if item['status'] == "Haastattelu" and item['interview_date']:
+                if item['status'] in ["Haastattelu", "Soveltuvuuskoe"] and item['interview_date']:
                     countdown_badge = safe_deadline_block(item['interview_date'], is_future_event=True)
-                    st.markdown(f"🗓️ **Haastattelu:** {item['interview_date']} klo {item['interview_time']} → <span style='color:#d9534f; font-weight:bold;'>{countdown_badge}</span>", unsafe_allow_html=True)
+                    st.markdown(f"🗓️ **Tapahtuma:** {item['interview_date']} klo {item['interview_time']} → <span style='color:#d9534f; font-weight:bold;'>{countdown_badge}</span>", unsafe_allow_html=True)
 
                 is_editing = st.session_state.edit_states.get(i, False)
                 with st.expander("👤 Yhteystiedot"):
@@ -508,11 +546,25 @@ def main():
         if not st.session_state.tracked_companies:
             st.info("Seurantalista on tyhjä.")
 
-    # --- TAB 6: AGENTTI (SMART QUOTA + KELA) ---
+    # --- TAB 6: AGENTTI (SMART QUOTA + KELA + TUTKA) ---
     with tab6:
-        st.header("🕵️ Ura-agentti")
-        st.info("Agentti valvoo työnhakuvelvoitetta, aikatauluja ja Kela-ilmoituksia.")
+        st.header("🕵️ Ura-agentti & Tutka")
         
+        # --- KOULUTUSTUTKA ---
+        st.subheader("🎓 Koulutustutka (Jatkuva haku & Media-ala)")
+        st.info("Agentti tutkii taustalla oppilaitosten sivuja ja ilmoittaa erillishauista, jotka osuvat luovalle alalle.")
+        
+        taitotalo_url = "https://www.taitotalo.fi/koulutukset/ict-ja-media-alan-koulutus"
+        with st.spinner("Tutka skannaa Taitotalon sivua..."):
+            active_keywords = check_school_application_status(taitotalo_url)
+            if active_keywords:
+                st.success(f"🔥 **HAKU AUKI!** Taitotalon sivulta löytyi viitteitä avoimesta hausta media-alalla ({', '.join(active_keywords)}).")
+                st.markdown(f"[👉 Siirry heti Taitotalon sivulle]({taitotalo_url})")
+            else:
+                st.info("ℹ️ Taitotalon sivulla ei juuri nyt näkynyt merkkejä avoimesta media-alan erillishausta. Yleinen yhteishaku on sivuutettu. (Tutka päivittyy tunnin välein).")
+        
+        st.divider()
+
         # --- KELA AGENTTI ---
         st.subheader("🏦 Kela-ilmoitus (4 viikon jakso)")
         saved_kela_date = st.session_state.kela_data.get("last_date")
@@ -523,7 +575,7 @@ def main():
         with k1:
             input_kela_date = st.date_input("Milloin palautit edellisen työttömyysajan ilmoituksen?", value=default_kela)
         with k2:
-            st.write("")
+            st.write("") 
             st.write("")
             if st.button("💾 Tallenna päivä"):
                 st.session_state.kela_data["last_date"] = str(input_kela_date)
@@ -603,14 +655,15 @@ def main():
                         with col_b:
                             if st.session_state.get(f"show_email_{i}", False):
                                 st.markdown("### 📝 Luonnos:")
-                                contact = item.get('contact_name', 'Rekrytointitiimi')
+                                
+                                contact = item.get('contact_name', 'Vastaanottaja')
                                 draft_email = f"""
 Hei {contact},
 
 Toivottavasti viikkonne on sujunut hyvin!
 
-Laitoin teille hakemuksen {item['role']} -tehtävään {item['date']} ({days_since_applied} päivää sitten). 
-Olen edelleen erittäin kiinnostunut mahdollisuudesta liittyä {item['company']}:n tiimiin ja halusin tiedustella, missä vaiheessa rekrytointiprosessi etenee?
+Laitoin teille hakemuksen {item['role']} -tehtävään/koulutukseen {item.get('date', '')} ({days_since_applied} päivää sitten). 
+Olen edelleen erittäin kiinnostunut ja halusin tiedustella, missä vaiheessa valintaprosessi etenee?
 
 Vastaan mielelläni mahdollisiin lisäkysymyksiin.
 
@@ -623,13 +676,13 @@ Ystävällisin terveisin,
                                     st.rerun()
 
                 # --- LOGIIKKA B: HAASTATTELU PREP (0-2 PÄIVÄÄ) ---
-                if item['status'] == "Haastattelu" and item.get('interview_date'):
+                if item['status'] in ["Haastattelu", "Soveltuvuuskoe"] and item.get('interview_date'):
                     days_until = calculate_days_diff(item['interview_date'], is_future=True)
                     
                     if 0 <= days_until <= 2:
                         agent_actions_found = True
                         with st.container():
-                            st.error(f"🔥 **{item['company']}**: Haastattelu {days_until} pv päästä! Valmistaudutaanko?")
+                            st.error(f"🔥 **{item['company']}**: {item['status']} {days_until} pv päästä! Valmistaudutaanko?")
                             
                             col_c, col_d = st.columns([1, 4])
                             with col_c:
@@ -640,9 +693,9 @@ Ystävällisin terveisin,
                                 if st.session_state.get(f"show_prep_{i}", False):
                                     st.markdown("### 📋 Prep-lista:")
                                     prep_text = f"""
-1. **Tutustu yrityksen viimeisimpiin uutisiin** (LinkedIn, Verkkosivut).
-2. **Kertaa hakemuksesi:** Mitä lupasit osaavasi?
-3. **Valmistele kysymyksiä heille:** Esim. "Miltä tyypillinen työpäivä näyttää?"
+1. **Tutustu organisaation uutisiin** (Verkkosivut).
+2. **Kertaa hakemuksesi/portfoliosi:** Mitä lupasit osaavasi?
+3. **Valmistele kysymyksiä heille:** Esim. "Miltä tyypillinen päivä teillä näyttää?"
 4. **Pitch:** Harjoittele 2 minuutin hissipuhe itsestäsi.
                                     """
                                     st.markdown(prep_text)
@@ -651,7 +704,7 @@ Ystävällisin terveisin,
                                         st.rerun()
 
         if not agent_actions_found:
-            st.success("✅ Kaikki ajan tasalla. Ei akuutteja toimenpiteitä työnhakujen osalta.")
+            st.success("✅ Kaikki ajan tasalla. Ei akuutteja toimenpiteitä seurattavien kohteiden osalta.")
 
     # --- TAB 7: TYÖMARKKINATORI ---
     with tab7:
