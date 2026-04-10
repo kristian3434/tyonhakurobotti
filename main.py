@@ -153,11 +153,7 @@ def calculate_days_diff(date_str, is_future=False):
     except:
         return 0
 
-# --- HYBRID INTELLIGENCE ENGINE (LOCAL ONLY) ---
-
-AI_LOGIC_CORE = {
-    "Local Engine": {"provider": "Paikallinen", "status": "Simuloitu", "role": "Primary"},
-}
+# --- LOKAALI ANALYYSIMOOTTORI ---
 
 def local_text_analysis(text):
     text = text.lower()
@@ -283,6 +279,7 @@ AMK_KEYWORDS = ["palvelumuotoilu", "erikoistumiskoulutus", "osaajakoulutus", "me
 AGENCIES = {
     "Avidly": "https://www.avidlyagency.com/fi/ura-avidlylla",
     "Bob the Robot": "https://www.bobtherobot.fi/",
+    "Dagmar": "https://www.dagmar.fi/ura/",
     "Futurice": "https://www.futurice.com/careers",
     "hasan & partners": "https://www.hasanpartners.fi/contact",
     "Kuulu": "https://www.kuulu.fi/",
@@ -293,6 +290,7 @@ AGENCIES = {
     "Siili Solutions": "https://www.siili.com/join-us",
     "TBWA\Helsinki": "https://www.tbwa.fi/",
     "Valve": "https://www.valve.fi/join-us",
+    "Vapa Media": "https://vapamedia.fi/",
     "Vincit": "https://www.vincit.com/careers",
 }
 
@@ -325,8 +323,22 @@ SEARCH_KEYWORDS = ["graafinen suunnittelija", "sisällöntuottaja", "visuaalinen
 FUTURE_MAKER_LINK = "https://janmyllymaki.wixsite.com/future-maker/fi"
 
 SITES_INTL = {"Behance Jobs": "https://www.behance.net/joblist", "Design Jobs Board": "https://www.designjobsboard.com/", "Krop": "https://www.krop.com/"}
-SITES_FI_NORDIC = {"Journalistiliitto (Etusivu)": "https://journalistiliitto.fi/", "Kuntarekry (Kulttuuri)": "https://www.kuntarekry.fi/fi/tyopaikat/kulttuuri-ja-museoala/", "Medialiitto (Työpaikat)": "https://www.medialiitto.fi/medialiitto/tyopaikat/", "TAKU ry": "https://taku.fi/avainsana/tyopaikat/"}
-SITES_MEDIA = {"Media Match": "https://www.media-match.com/", "ProductionHUB": "https://www.productionhub.com/jobs"}
+
+SITES_FI_NORDIC = {
+    "Grafia ry": "https://www.grafia.fi/",
+    "Journalistiliitto (Etusivu)": "https://journalistiliitto.fi/", 
+    "Kuntarekry (Kulttuuri)": "https://www.kuntarekry.fi/fi/tyopaikat/kulttuuri-ja-museoala/", 
+    "TAKU ry": "https://taku.fi/avainsana/tyopaikat/",
+    "Valtiolle.fi": "https://valtiolle.fi/",
+    "Viesti ry": "https://viesti.fi/tyoelama/avoimet-tyopaikat/"
+}
+
+SITES_MEDIA = {
+    "Duunitori (Media)": "https://duunitori.fi/tyopaikat/ala/media-ala",
+    "Kelaamo (AV-ala)": "https://www.kelaamo.fi/", 
+    "Sanoma Urat": "https://www.sanoma.com/fi/keita-olemme/toihin-sanomalle/",
+    "Yle Rekry": "https://yle.fi/rekry"
+}
 
 # ---------------------------------------------------------
 # UI & LOGIIKKA
@@ -365,13 +377,12 @@ def main():
     if 'edit_states' not in st.session_state: st.session_state.edit_states = {}
     if 'dismissed_suggestions' not in st.session_state: st.session_state.dismissed_suggestions = []
     if 'kela_data' not in st.session_state: st.session_state.kela_data = load_kela_data()
+    
+    if 'deleted_company' not in st.session_state: st.session_state.deleted_company = None
 
     with st.sidebar:
         st.title("⚙️ Asetukset")
-        st.header("🧠 Äly")
-        
-        selected_ai_core = st.radio("Malli:", list(AI_LOGIC_CORE.keys()), index=0)
-        st.info("ℹ️ API-avain on poistettu käytöstä. Sovellus käyttää paikallista analyysia.")
+        st.info("ℹ️ Sovellus toimii nyt täysin paikallisessa tilassa (Local Mode). Ulkoiset AI-rajapinnat on poistettu käytöstä.")
 
         st.markdown("---")
         toggle_startup = st.toggle("🚀 Start-upit", value=False)
@@ -380,9 +391,8 @@ def main():
             for name, url in STARTUPS_PK.items():
                 if validate_link(url): st.markdown(f"- [{name}]({url})")
 
-    st.title("MISSION JOBS // HUB V68.7 (Local Mode)")
-    status_text = "🟡 LOCAL MODE"
-    st.markdown(f"**Tila:** {status_text} | **Käyttäjä:** {USER_NAME} | **Core:** {selected_ai_core}")
+    st.title("MISSION JOBS // HUB V68.8 (Local Mode)")
+    st.markdown(f"**Tila:** 🟡 LOCAL MODE | **Käyttäjä:** {USER_NAME}")
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "✨ HAKEMUS", "📊 ANALYSOI", "🏢 LINKIT", "⚡️ TEHOHAKU", 
@@ -403,10 +413,10 @@ def main():
         
         if st.button("🚀 LUO HAKEMUS", type="primary"):
             if job_desc and user_cv:
-                with st.spinner("Luodaan hakemuspohjaa ilman tekoälyä..."):
+                with st.spinner("Luodaan hakemuspohjaa..."):
                     draft = generate_template_application(company_name if company_name else "[YRITYS]", role_name if role_name else "[ROOLI]", job_desc, user_cv)
                     st.subheader("📄 Hakemuspohja (Local Mode):")
-                    st.info("💡 API on poissa käytöstä, joten tässä on älykäs pohja, jonka voit viimeistellä.")
+                    st.info("💡 Tässä on älykäs pohja, jonka voit viimeistellä.")
                     st.text_area("", value=draft, height=600)
             else:
                 st.warning("Täytä ainakin ilmoitus ja oma tausta.")
@@ -471,13 +481,26 @@ def main():
     with tab5:
         st.header("📌 Hakemusten Seuranta")
 
+        if st.session_state.deleted_company:
+            yrityksen_nimi = st.session_state.deleted_company.get('company', 'Tuntematon')
+            st.warning(f"Poistit juuri kirjauksen: **{yrityksen_nimi}**")
+            if st.button(f"↩️ Kumoa ja palauta kirjaus"):
+                st.session_state.tracked_companies.append(st.session_state.deleted_company)
+                st.session_state.deleted_company = None
+                save_local_data(st.session_state.tracked_companies)
+                st.success("✅ Kirjaus palautettu onnistuneesti!")
+                st.rerun()
+
         STATUS_COLORS = {
             "Odottaa": {"bg": "#FFF3CD", "text": "#856404"},
             "Keskustelu": {"bg": "#D1ECF1", "text": "#0C5460"},
             "Haastattelu": {"bg": "#C3E6CB", "text": "#155724"},
             "Ei vastausta": {"bg": "#E2E3E5", "text": "#6C757D"},
             "Hylätty": {"bg": "#F8D7DA", "text": "#721C24"},
-            "Kiinnostunut": {"bg": "#E2E3E5", "text": "#333333"}
+            "Kiinnostunut": {"bg": "#E2E3E5", "text": "#333333"},
+            "Soveltuvuuskoe": {"bg": "#D1ECF1", "text": "#0C5460"},
+            "Valintapäätös": {"bg": "#C3E6CB", "text": "#155724"},
+            "Kurssipaikka vahvistettu": {"bg": "#d4edda", "text": "#155724"}
         }
 
         with st.expander("➕ Lisää manuaalisesti", expanded=False):
@@ -517,7 +540,8 @@ def main():
                 with c2: st.markdown(f"<span style='background-color:{status_color['bg']}; color:{status_color['text']}; padding:4px 8px; border-radius:6px;'>{item['status']}</span> <span style='margin-left:8px; font-size:0.9em;'>{time_badge}</span>", unsafe_allow_html=True)
                 with c3:
                     if st.button("🗑️", key=f"d{i}"): 
-                        st.session_state.tracked_companies.pop(i)
+                        poistettu_kohde = st.session_state.tracked_companies.pop(i)
+                        st.session_state.deleted_company = poistettu_kohde
                         save_local_data(st.session_state.tracked_companies)
                         st.rerun()
 
@@ -526,7 +550,7 @@ def main():
                     st.markdown(f"🗓️ **Tapahtuma:** {item['interview_date']} klo {item['interview_time']} → <span style='color:#d9534f; font-weight:bold;'>{countdown_badge}</span>", unsafe_allow_html=True)
 
                 is_editing = st.session_state.edit_states.get(i, False)
-                with st.expander("👤 Yhteystiedot"):
+                with st.expander("⚙️ Muokkaa yhteystietoja ja tilaa"):
                     if st.button("✏️ Avaa muokkaus" if not is_editing else "🔒 Lukitse", key=f"edit_btn_{i}"):
                         st.session_state.edit_states[i] = not is_editing
                         st.rerun()
@@ -542,6 +566,19 @@ def main():
                     with c3:
                         new_email = st.text_input("Sähköposti", value=item['contact_email'], key=f"ce_{i}", disabled=disabled_status)
                         if new_email != item['contact_email']: item['contact_email'] = new_email; save_local_data(st.session_state.tracked_companies)
+
+                    if is_editing:
+                        st.markdown("---")
+                        status_options = ["Odottaa", "Keskustelu", "Haastattelu", "Ei vastausta", "Hylätty", "Soveltuvuuskoe", "Valintapäätös", "Kurssipaikka vahvistettu", "Kiinnostunut"]
+                        if item['status'] not in status_options:
+                            status_options.append(item['status'])
+                        
+                        new_status = st.selectbox("Päivitä hakemuksen tila:", status_options, index=status_options.index(item['status']), key=f"status_select_{i}")
+                        
+                        if new_status != item['status']:
+                            item['status'] = new_status
+                            save_local_data(st.session_state.tracked_companies)
+                            st.rerun()
 
         if not st.session_state.tracked_companies:
             st.info("Seurantalista on tyhjä.")
@@ -660,9 +697,9 @@ def main():
                                 draft_email = f"""
 Hei {contact},
 
-Toivottavasti viikkonne on sujunut hyvin!
+Toivottavasti viikkone on sujunut hyvin!
 
-Laitoin teille hakemuksen {item['role']} -tehtävään/koulutukseen {item.get('date', '')} ({days_since_applied} päivää sitten). 
+Laitoin teille hakemuksen {item['role']} -tehtävään/koulutukseen {item['date']} ({days_since_applied} päivää sitten). 
 Olen edelleen erittäin kiinnostunut ja halusin tiedustella, missä vaiheessa valintaprosessi etenee?
 
 Vastaan mielelläni mahdollisiin lisäkysymyksiin.
@@ -692,6 +729,7 @@ Ystävällisin terveisin,
                             with col_d:
                                 if st.session_state.get(f"show_prep_{i}", False):
                                     st.markdown("### 📋 Prep-lista:")
+                                    
                                     prep_text = f"""
 1. **Tutustu organisaation uutisiin** (Verkkosivut).
 2. **Kertaa hakemuksesi/portfoliosi:** Mitä lupasit osaavasi?
