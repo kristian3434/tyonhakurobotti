@@ -279,7 +279,7 @@ AMK_KEYWORDS = ["palvelumuotoilu", "erikoistumiskoulutus", "osaajakoulutus", "me
 AGENCIES = {
     "Avidly": "https://www.avidlyagency.com/fi/ura-avidlylla",
     "Bob the Robot": "https://www.bobtherobot.fi/",
-    "Dagmar": "https://www.dagmar.fi/ura/",
+    "Dagmar": "https://www.dagmar.fi/",
     "Futurice": "https://www.futurice.com/careers",
     "hasan & partners": "https://www.hasanpartners.fi/contact",
     "Kuulu": "https://www.kuulu.fi/",
