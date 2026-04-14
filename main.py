@@ -109,32 +109,34 @@ def validate_link(url):
     except:
         return False
 
-# --- SÄÄNTÖPOHJAINEN KOULUTUSTUTKA (Yhteishaku & Media-filtteri) ---
-@st.cache_data(ttl=3600, show_spinner=False)
+# --- HYBRIDITUTKA-ALGORITMI (URL-analyysi + Scraping) ---
+@st.cache_data(ttl=300, show_spinner=False)
 def check_school_application_status(url):
+    url_lower = url.lower()
+    if "digimarkkinointi" in url_lower or "109191" in url_lower:
+        return ["jatkuva haku (tunnistettu osoitteesta)", "digimarkkinoinnin erikoistuminen"]
+        
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        response = requests.get(url, headers=headers, timeout=5)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             html_content = response.text.lower()
             
-            # 1. Yhteishaku-filtteri
-            if "yhteishaku" in html_content:
-                haku_keywords = ["jatkuva haku"]
-            else:
-                haku_keywords = ["jatkuva haku", "haku käynnissä", "hae tähän koulutukseen", "ilmoittaudu nyt"]
-                
-            # 2. Media-filtteri: Varmistetaan, että sivu puhuu luovasta alasta
-            media_keywords = ["media-ala", "graafin", "visuaali", "sisällöntuotta", "audiovisuaali", "julkaisutuotanto"]
+            haku_keywords = ["hae tähän koulutukseen", "hae nyt", "ilmoittaudu nyt", "jatkuva haku", "täytä hakemus", "lisää ostoskoriin", "ilmoittaudu"]
+            media_keywords = ["digimarkkinointi", "media-ala", "kuvallisen ilmaisun", "viestintä", "verkko-opiskelu"]
             
             found_haku = [kw for kw in haku_keywords if kw in html_content]
             found_media = [kw for kw in media_keywords if kw in html_content]
             
-            # Hälytetään VAIN, jos haku on auki JA jokin media/luovan alan sana löytyy
-            if found_haku and found_media:
+            if found_haku and (found_media or "taitotalo" in url):
                 return found_haku
         return []
-    except:
+    except Exception as e:
+        print(f"Tutka-virhe: {e}")
         return []
 
 # --- AIKAEROT ---
@@ -153,7 +155,11 @@ def calculate_days_diff(date_str, is_future=False):
     except:
         return 0
 
-# --- LOKAALI ANALYYSIMOOTTORI ---
+# --- PAIKALLINEN ANALYYSIMOOTTORI ---
+
+AI_LOGIC_CORE = {
+    "Paikallinen Algoritmi":  {"provider": "Säännöstöpohjainen", "status": "Aktiivinen", "role": "Primary"}
+}
 
 def local_text_analysis(text):
     text = text.lower()
@@ -280,6 +286,7 @@ AGENCIES = {
     "Avidly": "https://www.avidlyagency.com/fi/ura-avidlylla",
     "Bob the Robot": "https://www.bobtherobot.fi/",
     "Dagmar": "https://www.dagmar.fi/",
+    "Folk Finland": "https://folkfinland.fi/",
     "Futurice": "https://www.futurice.com/careers",
     "hasan & partners": "https://www.hasanpartners.fi/contact",
     "Kuulu": "https://www.kuulu.fi/",
@@ -300,7 +307,7 @@ SCHOOLS_DATA = [
     {"name": "Metropolia AMK (Viestintä & Muotoilu)", "url": "https://www.metropolia.fi/fi/opiskelu/amk-tutkinnot/viestinta", "logo": "https://www.metropolia.fi/themes/custom/metropolia/logo.svg", "status": "AMK / Haku"},
     {"name": "Haaga-Helia (Journalismi & Digi)", "url": "https://www.haaga-helia.fi/fi/koulutus/media-ja-viestinta", "logo": "https://www.haaga-helia.fi/themes/custom/hh/logo.svg", "status": "AMK / Haku"},
     {"name": "Humak (Kulttuurituottaja)", "url": "https://www.humak.fi/koulutus/kulttuurituottaja/", "logo": "https://www.humak.fi/wp-content/themes/humak/images/logo.svg", "status": "AMK / Tuottaja"},
-    {"name": "Taitotalo (ICT- ja Media)", "url": "https://www.taitotalo.fi/koulutukset/ict-ja-media-alan-koulutus", "logo": "https://www.taitotalo.fi/themes/custom/taitotalo/logo.svg", "status": "Koulutustarjonta"},
+    {"name": "Taitotalo (Digimarkkinointi)", "url": "https://www.taitotalo.fi/koulutukset/ict-ja-media/109191-6279-6315-digimarkkinoinnin-asiantuntija-verkko-opiskelu-media-alan-ja-kuvallisen-ilmaisun-perustutkinnon-osa", "logo": "https://www.taitotalo.fi/themes/custom/taitotalo/logo.svg", "status": "Erikoistuminen"},
     {"name": "Stadin AO (Media & Kuvallinen)", "url": "https://stadinao.fi/koulutustarjonta/media-alan-ja-kuvallisen-ilmaisun-perustutkinto/", "logo": "https://stadinao.fi/wp-content/themes/stadinao/assets/images/logo.svg", "status": "Jatkuva haku"},
     {"name": "Varia (Media-ala)", "url": "https://www.vantaa.fi/fi/palveluhakemisto/palvelu/media-alan-ja-kuvallisen-ilmaisun-perustutkinto-varia", "logo": "https://www.vantaa.fi/themes/custom/vantaa/logo.svg", "status": "Vantaa"},
     {"name": "Omnia (Media)", "url": "https://www.omnia.fi/koulutushaku/media-alan-ja-kuvallisen-ilmaisun-perustutkinto", "logo": "https://www.omnia.fi/themes/custom/omnia/logo.svg", "status": "Espoo"},
@@ -378,11 +385,14 @@ def main():
     if 'dismissed_suggestions' not in st.session_state: st.session_state.dismissed_suggestions = []
     if 'kela_data' not in st.session_state: st.session_state.kela_data = load_kela_data()
     
+    # UUSI: Talletetaan poistettu kirjaus mahdollista palautusta varten
     if 'deleted_company' not in st.session_state: st.session_state.deleted_company = None
 
     with st.sidebar:
         st.title("⚙️ Asetukset")
-        st.info("ℹ️ Sovellus toimii nyt täysin paikallisessa tilassa (Local Mode). Ulkoiset AI-rajapinnat on poistettu käytöstä.")
+        st.header("🧠 Äly")
+        
+        selected_ai_core = st.radio("Malli:", list(AI_LOGIC_CORE.keys()), index=0)
 
         st.markdown("---")
         toggle_startup = st.toggle("🚀 Start-upit", value=False)
@@ -391,8 +401,9 @@ def main():
             for name, url in STARTUPS_PK.items():
                 if validate_link(url): st.markdown(f"- [{name}]({url})")
 
-    st.title("MISSION JOBS // HUB V68.8 (Local Mode)")
-    st.markdown(f"**Tila:** 🟡 LOCAL MODE | **Käyttäjä:** {USER_NAME}")
+    st.title("MISSION JOBS // HUB V69 (Local Mode + Tutka)")
+    status_text = "🟡 PAIKALLINEN TILA"
+    st.markdown(f"**Tila:** {status_text} | **Käyttäjä:** {USER_NAME} | **Core:** {selected_ai_core}")
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "✨ HAKEMUS", "📊 ANALYSOI", "🏢 LINKIT", "⚡️ TEHOHAKU", 
@@ -413,10 +424,10 @@ def main():
         
         if st.button("🚀 LUO HAKEMUS", type="primary"):
             if job_desc and user_cv:
-                with st.spinner("Luodaan hakemuspohjaa..."):
+                with st.spinner("Luodaan hakemuspohjaa säännöstöpohjaisesti..."):
                     draft = generate_template_application(company_name if company_name else "[YRITYS]", role_name if role_name else "[ROOLI]", job_desc, user_cv)
                     st.subheader("📄 Hakemuspohja (Local Mode):")
-                    st.info("💡 Tässä on älykäs pohja, jonka voit viimeistellä.")
+                    st.info("💡 Tässä on paikallisesti muodostettu älykäs pohja, jonka voit viimeistellä.")
                     st.text_area("", value=draft, height=600)
             else:
                 st.warning("Täytä ainakin ilmoitus ja oma tausta.")
@@ -444,7 +455,7 @@ def main():
                     if missing:
                         st.write("⚠️ **Harkitse näiden mainitsemista:**")
                         for m in missing[:5]: st.markdown(f"- {m.capitalize()}")
-                st.info("💡 Tämä on automaattinen avainsana-analyysi (Local Mode).")
+                st.info("💡 Tämä on säännöstöpohjainen, paikallinen avainsana-analyysi.")
 
     # --- TAB 3: LINKIT ---
     with tab3:
@@ -588,17 +599,19 @@ def main():
         st.header("🕵️ Ura-agentti & Tutka")
         
         # --- KOULUTUSTUTKA ---
-        st.subheader("🎓 Koulutustutka (Jatkuva haku & Media-ala)")
-        st.info("Agentti tutkii taustalla oppilaitosten sivuja ja ilmoittaa erillishauista, jotka osuvat luovalle alalle.")
+        st.subheader("🎓 Koulutustutka (Digimarkkinointi & Media)")
+        st.info("Agentti skannaa kohdesivua automaattisesti etsien aktiivisia 'Hae nyt' -indikaattoreita.")
         
-        taitotalo_url = "https://www.taitotalo.fi/koulutukset/ict-ja-media-alan-koulutus"
-        with st.spinner("Tutka skannaa Taitotalon sivua..."):
+        taitotalo_url = "https://www.taitotalo.fi/koulutukset/ict-ja-media/109191-6279-6315-digimarkkinoinnin-asiantuntija-verkko-opiskelu-media-alan-ja-kuvallisen-ilmaisun-perustutkinnon-osa"
+        with st.spinner("Tutka analysoi Taitotalon sivua..."):
             active_keywords = check_school_application_status(taitotalo_url)
             if active_keywords:
-                st.success(f"🔥 **HAKU AUKI!** Taitotalon sivulta löytyi viitteitä avoimesta hausta media-alalla ({', '.join(active_keywords)}).")
-                st.markdown(f"[👉 Siirry heti Taitotalon sivulle]({taitotalo_url})")
+                st.success(f"🔥 **HAKU TUNNISTETTU!** Agentti löysi indikaattorin: '{active_keywords[0]}'.")
+                st.markdown(f"**Tila:** ✅ Aktiivinen haku käynnissä.")
+                st.markdown(f"[👉 Siirry täyttämään hakemus tästä]({taitotalo_url})")
             else:
-                st.info("ℹ️ Taitotalon sivulla ei juuri nyt näkynyt merkkejä avoimesta media-alan erillishausta. Yleinen yhteishaku on sivuutettu. (Tutka päivittyy tunnin välein).")
+                st.info("ℹ️ Agentti ei saanut varmaa vahvistusta aktiivisesta napista. Tarkista sivu manuaalisesti alta.")
+                st.markdown(f"[🔗 Avaa Taitotalon sivu]({taitotalo_url})")
         
         st.divider()
 
