@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.vendor/
+.playwright-browsers/
+.streamlit/
+.DS_Store
+.env
+.env.*
+
+# Paikallisesti syntyvä käyttäjädata ja välimuistit eivät kuulu GitHubiin.
+local_storage.json
+kela_storage.json
+settings.json
+logo_cache.json
