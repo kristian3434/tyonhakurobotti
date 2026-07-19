@@ -17,6 +17,8 @@ from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
+from config import PORTFOLIO_URL
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
 LOGO_CACHE_FILE = os.path.join(BASE_DIR, "logo_cache.json")
@@ -451,7 +453,7 @@ def agency_logo_class(agency: dict) -> str:
 
 def _build_defaults() -> dict:
     return {
-        "portfolio_url": "",
+        "portfolio_url": PORTFOLIO_URL,
         "monthly_target_count": 4,
         "user_education": {
             "degree": "",
@@ -649,7 +651,7 @@ def get_training_topics() -> dict[str, str]:
             if row.get("label") and row.get("query")}
 
 def get_portfolio_url() -> str:
-    return get_settings().get("portfolio_url", "")
+    return _clean_text(get_settings().get("portfolio_url")) or PORTFOLIO_URL
 
 def get_user_education() -> dict:
     return get_settings().get("user_education", {})

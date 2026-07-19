@@ -1,7 +1,6 @@
 __pycache__/
 *.pyc
 .vendor/
-.playwright-browsers/
 .streamlit/
 .DS_Store
 .env

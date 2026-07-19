@@ -23,7 +23,8 @@ SIMULATED_API_KEY = "demo-api-key-not-a-real-secret"
 VISITOR_DATA_ENABLED = False
 VISITOR_DATA_ENDPOINT = ""
 VISITOR_DATA_TOKEN = ""
-FUTURE_MAKER_LINK = ""
+PORTFOLIO_URL = "https://tulevaisuudentekija.janmyllymaki.workers.dev/"
+FUTURE_MAKER_LINK = PORTFOLIO_URL
 
 # ── AI-mallit (Paikallinen LM Studio M5 MacBook Airilla) ──────────────────────
 LOCAL_AI_BASE_URL = "http://127.0.0.1:1234/v1"
