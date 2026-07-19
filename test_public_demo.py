@@ -4,7 +4,8 @@ from unittest.mock import patch
 import pandas as pd
 
 import sheets
-from config import SIMULATED_API_KEY, VISITOR_DATA_ENABLED
+import settings_manager
+from config import PORTFOLIO_URL, SIMULATED_API_KEY, VISITOR_DATA_ENABLED
 from router import call_demo
 
 
@@ -32,6 +33,18 @@ class PublicDemoTests(unittest.TestCase):
         self.assertIsInstance(data, pd.DataFrame)
         self.assertTrue(data.empty)
         get.assert_not_called()
+
+    def test_portfolio_url_falls_back_to_public_site(self):
+        self.assertEqual(
+            PORTFOLIO_URL,
+            "https://tulevaisuudentekija.janmyllymaki.workers.dev/",
+        )
+        with patch.object(
+            settings_manager,
+            "get_settings",
+            return_value={"portfolio_url": ""},
+        ):
+            self.assertEqual(settings_manager.get_portfolio_url(), PORTFOLIO_URL)
 
 
 if __name__ == "__main__":
